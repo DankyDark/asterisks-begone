@@ -18,7 +18,7 @@ Welcome to **Asterisks Begone**, an extension for [SillyTavern](https://github.c
 
 ## Usage
 
-1. **Install the Extension:** open SillyTavern -> extensions -> install extension -> https://github.com/DankyDark/asterisk-begone
+1. **Install the Extension:** open SillyTavern -> extensions -> install extension -> https://github.com/DankyDark/asterisks-begone
 2. **Navigate to any Character:** Open any character page.
 3. **Locate the Button:** Find the "Asterisk Begone" button next to the `First Message` label. 
 4. **Click to Clean:** Press the button to instantly remove all unwanted asterisks from the greetings.

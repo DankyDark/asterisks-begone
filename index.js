@@ -124,64 +124,127 @@ function checkAndAddButton() {
 }
 
 // Function to detect legitimate character actions versus excessive asterisk usage
-// Character actions are specific actions wrapped in asterisks mixed with regular text or dialogue
-// We want to detect:
-// 1. True character actions: "Hello there. *Character waves.* How are you today?"
-// 2. But allow cleaning when everything except dialogue is wrapped in asterisks
-//    like: "*You wake with a start.* "Hello," *she says with a smile.*"
 function hasCharacterActions(text) {
   if (!text) return false;
   
+  // Debug variables
+  const debug = {
+    originalLength: text.length,
+    dialogueMatches: [],
+    nonDialogueLength: 0,
+    asteriskWrappedSections: [],
+    asteriskWrappedLength: 0,
+    remainingTextLength: 0,
+    wrappedRatio: 0,
+    isCharacterAction: false,
+    reason: ""
+  };
+  
   // If the entire text is wrapped in asterisks, it's not character actions
   if (text.startsWith('*') && text.endsWith('*') && text.indexOf('*', 1) === text.length - 1) {
+    debug.reason = "Full text wrapped in asterisks";
     return false;
   }
   
-  // Split the text into segments: dialogue (quoted text) and non-dialogue parts
-  // Check for both double quotes and single quotes for dialogue
+  // Identify dialogue sections (text in quotes)
   const dialogueRegex = /["'][^"']+["']/g;
   const dialogueMatches = text.match(dialogueRegex) || [];
+  debug.dialogueMatches = dialogueMatches;
+  
+  // Check for a common pattern: alternating dialogue and asterisk sections
+  // This is typical of text that should be cleaned up
+  if (dialogueMatches.length > 0) {
+    // Get the text sections by splitting on dialogue
+    let sections = text;
+    for (const match of dialogueMatches) {
+      sections = sections.replace(match, "|||DIALOGUE|||");
+    }
+    sections = sections.split("|||DIALOGUE|||");
+    
+    // Check if all non-dialogue sections are wrapped in asterisks
+    const allNonDialogueWrapped = sections.every(section => {
+      const trimmed = section.trim();
+      return trimmed === "" || 
+             (trimmed.startsWith('*') && trimmed.endsWith('*')) ||
+             !/\*/.test(trimmed); // Sections with no asterisks at all are fine
+    });
+    
+    if (allNonDialogueWrapped) {
+      debug.reason = "All non-dialogue sections are fully wrapped in asterisks";
+      console.log("[Asterisks-Begone] Detected alternating dialogue and asterisk-wrapped sections", debug);
+      return false; // This is the pattern we want to clean up
+    }
+  }
   
   // Get text without dialogue
   let nonDialogueText = text;
   for (const match of dialogueMatches) {
-    nonDialogueText = nonDialogueText.replace(match, ' '); // Replace dialogue with spaces to preserve structure
+    nonDialogueText = nonDialogueText.replace(match, ' ');
   }
+  debug.nonDialogueLength = nonDialogueText.trim().length;
   
-  // Find all content wrapped in asterisks in the non-dialogue text
-  const asteriskWrappedContent = nonDialogueText.match(/\*[^*]+\*/g) || [];
+  // Find asterisk-wrapped sections
+  const asteriskWrappedRegex = /\*[^*]+\*/g;
+  const asteriskWrappedContent = nonDialogueText.match(asteriskWrappedRegex) || [];
+  debug.asteriskWrappedSections = asteriskWrappedContent;
   
   // If we have no asterisk-wrapped content, return false
   if (asteriskWrappedContent.length === 0) {
+    debug.reason = "No asterisk-wrapped content found";
     return false;
   }
   
-  // Get non-dialogue text without asterisk segments
+  // Get non-dialogue text without asterisk-wrapped segments
   let remainingNonDialogueText = nonDialogueText;
   for (const match of asteriskWrappedContent) {
     remainingNonDialogueText = remainingNonDialogueText.replace(match, ' ');
   }
   
-  // Remove remaining asterisks and trim
+  // Remove any remaining asterisks and trim
   remainingNonDialogueText = remainingNonDialogueText.replace(/\*/g, '').trim();
+  debug.remainingTextLength = remainingNonDialogueText.length;
   
-  // Check if there's any substantial text outside of both dialogue and asterisk-wrapped segments
-  // If there's only dialogue and asterisk-wrapped content with no plain text between them,
-  // this is likely a case of overuse of asterisks rather than character actions
-  if (remainingNonDialogueText.length > 10) { // Require a meaningful amount of plain text (10+ chars)
-    // There's plain text outside both dialogue and asterisk-wrapped content
-    // This means we have a true mix of styles, likely with character actions
-    return true;
+  // Calculate how much of the non-dialogue text is wrapped in asterisks
+  const nonDialogueTextLength = nonDialogueText.trim().length;
+  // Sum the length of all asterisk-wrapped content (excluding the asterisks themselves)
+  const asteriskWrappedLength = asteriskWrappedContent.reduce((total, current) => {
+    // Remove the asterisks at beginning and end when counting the length
+    return total + current.slice(1, -1).length;
+  }, 0);
+  debug.asteriskWrappedLength = asteriskWrappedLength;
+  
+  // Calculate the ratio of asterisk-wrapped content to all non-dialogue content
+  const wrappedRatio = nonDialogueTextLength > 0 
+    ? asteriskWrappedLength / nonDialogueTextLength 
+    : 0;
+  debug.wrappedRatio = wrappedRatio;
+  
+  // Key detection logic: 
+  // 1. If most (>80%) of non-dialogue content is wrapped in asterisks, it's excessive usage, not character actions
+  // 2. If there's substantial plain text (not in asterisks, not dialogue), then there are mixed formats,
+  //    suggesting intentional character actions
+  
+  // Check if non-dialogue has substantial unwrapped text (suggesting mixed format with actions)
+  if (remainingNonDialogueText.length > 15) { // Higher threshold for more confidence
+    debug.isCharacterAction = true;
+    debug.reason = "Substantial unwrapped text found";
+    console.log("[Asterisks-Begone] Text has substantial unwrapped content, identified as character actions", debug);
+    return true; // True mix of formats with character actions
   }
   
-  // Check if the non-dialogue sections are entirely wrapped in asterisks
-  // If all non-dialogue text is wrapped in asterisks, this is excessive usage
-  // rather than intentional character actions
-  const nonDialogueContainsOnlyAsteriskWrapped = 
-    asteriskWrappedContent.join('').length >= nonDialogueText.trim().length * 0.8; // 80% threshold
+  // If almost all non-dialogue text is wrapped in asterisks, this is excessive usage to clean up
+  if (wrappedRatio > 0.80) { // Lowered to 80% to be more aggressive in cleaning
+    debug.isCharacterAction = false;
+    debug.reason = "High ratio of wrapped content";
+    console.log("[Asterisks-Begone] Text has excessive asterisk usage (ratio: " + wrappedRatio.toFixed(2) + "), safe to clean", debug);
+    return false; // Not character actions - just excessive asterisk usage
+  }
   
-  // Return false if everything is wrapped - this is excessive usage we want to clean
-  return !nonDialogueContainsOnlyAsteriskWrapped;
+  // Default to assuming character actions if we're unsure
+  debug.isCharacterAction = true;
+  debug.reason = "Uncertain case";
+  console.log("[Asterisks-Begone] Uncertain case, defaulting to preserving asterisks", debug);
+  return true;
 }
 
 async function removeAsterisks() {
@@ -207,12 +270,29 @@ async function removeAsterisks() {
       const firstMessage = $("#firstmessage_textarea").val();
       const alternateGreetings = character?.data?.alternate_greetings || [];
       
+      // Track which fields have character actions
+      const actionsInExamples = examplesText && hasCharacterActions(examplesText);
+      const actionsInFirstMessage = firstMessage && hasCharacterActions(firstMessage);
+      const actionsInAlternateGreetings = alternateGreetings.some(greeting => hasCharacterActions(greeting));
+      
       // Check all text content for character actions
-      if (hasCharacterActions(examplesText) || 
-          hasCharacterActions(firstMessage) ||
-          alternateGreetings.some(greeting => hasCharacterActions(greeting))) {
-        toastr.warning("Character actions found, not removing any asterisks.");
-        console.log("[Asterisks-Begone] Character actions detected, operation aborted.");
+      if (actionsInExamples || actionsInFirstMessage || actionsInAlternateGreetings) {
+        // Building a more descriptive message about where actions were found
+        let detectedIn = [];
+        if (actionsInExamples) detectedIn.push("example messages");
+        if (actionsInFirstMessage) detectedIn.push("first message");
+        if (actionsInAlternateGreetings) detectedIn.push("alternate greetings");
+        
+        const locationMessage = detectedIn.length > 1 
+          ? `in ${detectedIn.slice(0, -1).join(", ")} and ${detectedIn.slice(-1)}` 
+          : `in ${detectedIn[0]}`;
+        
+        toastr.warning(`Character actions detected ${locationMessage}. No asterisks were removed.`);
+        console.log(`[Asterisks-Begone] Character actions detected ${locationMessage}, operation aborted.`);
+        
+        // Inform the user how to override this if needed
+        toastr.info("Disable 'Check for character actions' in settings to clean up anyway.");
+        
         return;
       }
     }

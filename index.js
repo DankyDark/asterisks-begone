@@ -134,11 +134,15 @@ function hasCharacterActions(text) {
     originalText: text.substring(0, 100) + (text.length > 100 ? "..." : "")
   };
   
+  // Track if we've already decided based on a high-priority rule
+  let hasHighPriorityDecision = false;
+  let shouldCleanup = false;
+  
   // If the entire text is wrapped in asterisks, it's not character actions
   if (text.startsWith('*') && text.endsWith('*') && text.indexOf('*', 1) === text.length - 1) {
     debug.reason = "Entire text is wrapped in asterisks";
     console.log("[Asterisks-Begone] " + debug.reason, { text });
-    return false;
+    return false; // Definitive decision - clean up
   }
   
   // First, let's check the paragraph pattern - this is a more reliable indicator
@@ -170,7 +174,15 @@ function hasCharacterActions(text) {
         wrappedParagraphs,
         wrappedRatio
       });
-      return false; // Clean up asterisks
+      
+      // Mark this as a high-priority decision
+      hasHighPriorityDecision = true;
+      shouldCleanup = true;
+      
+      // Skip additional checks if this is a very clear case (>65% wrapped)
+      if (wrappedRatio > 0.65) {
+        return false; // Clean up asterisks immediately
+      }
     }
   }
   
@@ -214,7 +226,17 @@ function hasCharacterActions(text) {
   if (sections.length > 0 && allNonDialogueSectionsWrapped) {
     debug.reason = "All non-dialogue sections appear to be wrapped in asterisks";
     console.log("[Asterisks-Begone] " + debug.reason, { sections });
-    return false; // Clean up asterisks
+    
+    // If we don't already have a high-priority decision, make one now
+    if (!hasHighPriorityDecision) {
+      hasHighPriorityDecision = true;
+      shouldCleanup = true;
+    }
+    
+    // Return early if we've already decided to clean up
+    if (shouldCleanup) {
+      return false;
+    }
   }
   
   // Standard analysis below - keep as fallback
@@ -270,9 +292,21 @@ function hasCharacterActions(text) {
       if (text.indexOf('*') === 0 && text.lastIndexOf('*') === text.length - 1) {
         debug.reason = "Text contains dialogue not wrapped in quotes but wrapped in asterisks";
         console.log("[Asterisks-Begone] " + debug.reason);
-        return false; // Clean up asterisks
+        
+        // If we don't already have a high-priority decision, make one now
+        if (!hasHighPriorityDecision) {
+          return false; // Clean up asterisks
+        }
       }
     }
+  }
+  
+  // If we already made a high-priority decision based on paragraph analysis or sections,
+  // use that instead of the plain text analysis
+  if (hasHighPriorityDecision) {
+    debug.reason = "Using high-priority rule result: " + (shouldCleanup ? "clean up" : "preserve");
+    console.log("[Asterisks-Begone] " + debug.reason);
+    return !shouldCleanup; // Return the opposite of shouldCleanup (false = clean up, true = preserve)
   }
   
   // If we have significant MEANINGFUL text outside of both dialogue and asterisk-wrapped sections,

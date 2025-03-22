@@ -415,126 +415,145 @@ async function removeAsterisks() {
       return;
     }
 
-    // Check for character actions if the setting is enabled
-    if (extension_settings[extensionName].checkForCharacterActions) {
-      const examplesText = $("#mes_example_textarea").val();
-      const firstMessage = $("#firstmessage_textarea").val();
-      const alternateGreetings = character?.data?.alternate_greetings || [];
-      
-      // Track which fields have character actions
-      let fieldsWithCharacterActions = [];
-      
-      // Check all fields and collect results in an array for logging
-      if (examplesText) {
-        const result = hasCharacterActions(examplesText);
-        if (result) fieldsWithCharacterActions.push("example messages");
-        console.log(`[Asterisks-Begone] Examples check result: ${result}`);
-      }
-      
-      if (firstMessage) {
-        const result = hasCharacterActions(firstMessage);
-        if (result) fieldsWithCharacterActions.push("first message");
-        console.log(`[Asterisks-Begone] First message check result: ${result}`);
-      }
-      
-      for (let i = 0; i < alternateGreetings.length; i++) {
-        const greeting = alternateGreetings[i];
-        if (greeting) {
-          const result = hasCharacterActions(greeting);
-          if (result) {
-            fieldsWithCharacterActions.push(`alternate greeting ${i+1}`);
-            console.log(`[Asterisks-Begone] Alt greeting ${i+1} check result: ${result}`);
-          }
-        }
-      }
-      
-      // Check if we found any character actions
-      const hasAnyActions = fieldsWithCharacterActions.length > 0;
-      
-      if (hasAnyActions) {
-        // Build a descriptive message
-        const locationMessage = fieldsWithCharacterActions.length > 1 
-          ? `in ${fieldsWithCharacterActions.slice(0, -1).join(", ")} and ${fieldsWithCharacterActions.slice(-1)}` 
-          : `in ${fieldsWithCharacterActions[0]}`;
-        
-        toastr.warning(`Character actions detected ${locationMessage}. No asterisks were removed.`);
-        console.log(`[Asterisks-Begone] Character actions detected ${locationMessage}, operation aborted.`);
-        
-        // Inform the user how to override this if needed
-        toastr.info("Disable 'Check for character actions' in settings to clean up anyway.");
-        
-        return;
-      }
-    }
-
+    // We'll track which fields we've cleaned up
+    let cleanedFields = [];
+    let preservedFields = [];
     let hasChanges = false;
 
-    let examplesText = $("#mes_example_textarea").val();
-    if (examplesText) {
-      const cleanedExamples = examplesText.replace(/\*/g, "");
-      if (cleanedExamples !== examplesText) {
-        $("#mes_example_textarea").val(cleanedExamples);
-        examplesText = cleanedExamples;
-        hasChanges = true;
+    // Helper function to clean a field if needed
+    const cleanFieldIfNeeded = (fieldName, fieldText, saveFunction) => {
+      if (!fieldText) return false;
+      
+      // Check for character actions if the setting is enabled
+      let hasActions = false;
+      
+      if (extension_settings[extensionName].checkForCharacterActions) {
+        hasActions = hasCharacterActions(fieldText);
+        console.log(`[Asterisks-Begone] ${fieldName} check result: ${hasActions}`);
       }
+      
+      if (hasActions) {
+        // This field has character actions, skip cleaning it
+        preservedFields.push(fieldName);
+        return false;
+      }
+      
+      // Clean up asterisks
+      const cleanedText = fieldText.replace(/\*/g, "");
+      if (cleanedText !== fieldText) {
+        saveFunction(cleanedText);
+        cleanedFields.push(fieldName);
+        return true;
+      }
+      
+      return false;
+    };
+
+    // Process example messages
+    const examplesText = $("#mes_example_textarea").val();
+    if (cleanFieldIfNeeded("Example messages", examplesText, (cleaned) => {
+      $("#mes_example_textarea").val(cleaned);
+    })) {
+      hasChanges = true;
     }
 
-    let firstMessage = $("#firstmessage_textarea").val();
-    if (firstMessage) {
-      const cleanedFirstMessage = firstMessage.replace(/\*/g, "");
-      if (cleanedFirstMessage !== firstMessage) {
-        $("#firstmessage_textarea").val(cleanedFirstMessage);
-        firstMessage = cleanedFirstMessage;
-        hasChanges = true;
-      }
+    // Process first message
+    const firstMessage = $("#firstmessage_textarea").val();
+    if (cleanFieldIfNeeded("First message", firstMessage, (cleaned) => {
+      $("#firstmessage_textarea").val(cleaned);
+    })) {
+      hasChanges = true;
     }
 
-    let cleanedGreetings = [];
-    if (character?.data?.alternate_greetings) {
-      let altGreetingsChanged = false;
-      cleanedGreetings = character.data.alternate_greetings.map((greeting) => {
-        const cleaned = greeting.replace(/\*/g, "");
-        if (cleaned !== greeting) {
+    // Process alternate greetings
+    let altGreetingsChanged = false;
+    const alternateGreetings = character?.data?.alternate_greetings || [];
+    
+    const cleanedGreetings = alternateGreetings.map((greeting, index) => {
+      if (!greeting) return greeting;
+      
+      let cleanedGreeting = greeting;
+      if (!extension_settings[extensionName].checkForCharacterActions || 
+          !hasCharacterActions(greeting)) {
+        
+        cleanedGreeting = greeting.replace(/\*/g, "");
+        
+        if (cleanedGreeting !== greeting) {
+          cleanedFields.push(`Alternate greeting ${index + 1}`);
           altGreetingsChanged = true;
         }
-        return cleaned;
-      });
+      } else {
+        preservedFields.push(`Alternate greeting ${index + 1}`);
+      }
+      
+      return cleanedGreeting;
+    });
 
-      if (altGreetingsChanged) {
-        character.data.alternate_greetings = cleanedGreetings;
-        hasChanges = true;
+    if (altGreetingsChanged) {
+      character.data.alternate_greetings = cleanedGreetings;
+      hasChanges = true;
 
-        if ($("#alternate_greetings_template").length) {
-          $("#alternate_greetings_template").val(
-            JSON.stringify(cleanedGreetings, null, 2)
-          );
-        }
+      if ($("#alternate_greetings_template").length) {
+        $("#alternate_greetings_template").val(
+          JSON.stringify(cleanedGreetings, null, 2)
+        );
       }
     }
 
+    // Display appropriate messages based on what we did
     if (hasChanges) {
       try {
-        if (examplesText) {
-          const exampleTextarea = $("#mes_example_textarea");
-          exampleTextarea.val(examplesText);
-          exampleTextarea.trigger("change");
-        }
-
-        if (firstMessage) {
-          const firstMessageTextarea = $("#firstmessage_textarea");
-          firstMessageTextarea.val(firstMessage);
-          firstMessageTextarea.trigger("change");
-        }
-
+        // Trigger changes to save
+        const exampleTextarea = $("#mes_example_textarea");
+        exampleTextarea.trigger("change");
+        
+        const firstMessageTextarea = $("#firstmessage_textarea");
+        firstMessageTextarea.trigger("change");
+        
         $("#create_button").trigger("click");
-        toastr.success("Asterisks, BEGONE!");
+        
+        // Show appropriate success message
+        if (preservedFields.length > 0) {
+          // We cleaned some fields but preserved others
+          const cleanedMessage = cleanedFields.length > 1 
+            ? `Removed asterisks from ${cleanedFields.join(", ")}.` 
+            : `Removed asterisks from ${cleanedFields[0]}.`;
+            
+          const preservedMessage = preservedFields.length > 1 
+            ? `Preserved character actions in ${preservedFields.join(", ")}.` 
+            : `Preserved character actions in ${preservedFields[0]}.`;
+          
+          toastr.success(cleanedMessage);
+          toastr.info(preservedMessage);
+          
+          console.log("[Asterisks-Begone] Partial cleanup completed:", { 
+            cleaned: cleanedFields, 
+            preserved: preservedFields 
+          });
+        } else {
+          // We cleaned all fields
+          toastr.success("Asterisks, BEGONE!");
+          console.log("[Asterisks-Begone] All fields cleaned:", cleanedFields);
+        }
       } catch (saveError) {
         console.error("[Asterisks-Begone] Save error:", saveError);
         toastr.error("Error saving changes: " + saveError.message);
         toastr.info("Please save the character manually to apply changes");
       }
+    } else if (preservedFields.length > 0) {
+      // No changes but some fields were preserved
+      const message = preservedFields.length > 1 
+        ? `Character actions detected in ${preservedFields.join(", ")}. No asterisks were removed.` 
+        : `Character actions detected in ${preservedFields[0]}. No asterisks were removed.`;
+      
+      toastr.warning(message);
+      toastr.info("Disable 'Check for character actions' in settings to clean up anyway.");
+      
+      console.log("[Asterisks-Begone] No changes made, all fields preserved:", preservedFields);
     } else {
+      // No changes at all
       toastr.info("No asterisks found to remove");
+      console.log("[Asterisks-Begone] No asterisks found to remove");
     }
   } catch (error) {
     console.error("[Asterisks-Begone] Error removing asterisks:", error);

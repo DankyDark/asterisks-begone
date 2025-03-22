@@ -32,9 +32,10 @@ Welcome to **Asterisks Begone**, an extension for [SillyTavern](https://github.c
 
 - **Enabled:** Turn the extension on/off
 - **Check for character actions:** When enabled, the extension will detect if text contains character actions wrapped in asterisks (like *Character nods*) mixed with regular text and won't remove any asterisks from that text to preserve the formatting.
-  - Smart detection can distinguish between legitimate character actions and excessive asterisk usage
-  - When everything except dialogue is wrapped in asterisks, it will still clean them up
-  - Only preserves asterisks in text that uses them for specific character actions
+  - Smart detection identifies true character actions vs. excessive formatting
+  - Automatically cleans up greeting texts where all non-dialogue paragraphs are wrapped in asterisks
+  - Recognizes template variables and special tokens to avoid false positives
+  - Analyzes paragraph structure to make informed decisions about what to clean
 
 ---
 

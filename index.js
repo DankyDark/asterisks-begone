@@ -196,8 +196,10 @@ function hasCharacterActions(text) {
   // Step 5: Clean up remaining text and check if anything substantial is left
   remainingText = remainingText.replace(/\*/g, '').trim(); // Remove any stray asterisks
   
-  // Remove whitespace, punctuation and common formatting artifacts for more accurate detection
+  // Remove templating variables, special tokens, and formatting artifacts
   const cleanedRemainingText = remainingText
+    .replace(/{{[^}]+}}/g, '') // Remove template variables like {{user}}, {{char}}
+    .replace(/<[^>]+>/g, '') // Remove special tokens like <START>
     .replace(/[\s,.;:!?'"\-_—–()[\]{}]+/g, '') // Remove punctuation and whitespace
     .replace(/\s+/g, ''); // Remove any remaining whitespace
   
@@ -206,12 +208,34 @@ function hasCharacterActions(text) {
     raw: remainingText,
     cleaned: cleanedRemainingText,
     rawLength: remainingText.length,
-    cleanedLength: cleanedRemainingText.length
+    cleanedLength: cleanedRemainingText.length,
+    containsTemplateVars: /{{[^}]+}}/.test(remainingText),
+    containsSpecialTokens: /<[^>]+>/.test(remainingText)
   });
   
   // If we have significant MEANINGFUL text outside of both dialogue and asterisk-wrapped sections,
   // this suggests mixed formatting (likely real character actions)
   if (cleanedRemainingText.length > 10) {
+    // Extra check: if the remaining text contains a lot of template formatting or special patterns,
+    // it might not be real plain text but formatting artifacts
+    const suspiciousPatterns = [
+      'START', 'END', 'SYS', 'USER', 'CHAR',  // Common tokens
+      'user', 'char', 'assistant', 'message'  // Common template variable content
+    ];
+    
+    // Check if the cleaned text mostly consists of system tokens/variables
+    const isMostlySystemContent = suspiciousPatterns.some(pattern => 
+      cleanedRemainingText.toLowerCase().includes(pattern.toLowerCase())
+    );
+    
+    if (isMostlySystemContent) {
+      debug.reason = "Found template variables or system tokens, not legitimate plain text";
+      console.log("[Asterisks-Begone] " + debug.reason, {
+        cleanedText: cleanedRemainingText
+      });
+      return false; // Safe to clean up
+    }
+    
     debug.reason = "Found substantial plain text outside of dialogue and asterisk-wrapped sections";
     console.log("[Asterisks-Begone] " + debug.reason, { 
       textLength: text.length,

@@ -24,8 +24,11 @@
         <br />
         <br />
         When "Check for character actions" is enabled, the extension will detect if any greetings
-        or examples contain character actions wrapped in asterisks (like *{{char}} nods*) and preserve
-        them by not removing any asterisks in that text.
+        or examples contain character actions wrapped in asterisks (like *{{char}} nods*) mixed with regular text
+        and preserve them by not removing any asterisks in that text.
+        <br />
+        It's smart enough to distinguish between legitimate character actions and excessive asterisk usage.
+        When everything except dialogue is wrapped in asterisks, it will still clean them up.
         <br />
         <br />
         <strong>Warning:</strong> Please back up your character card first

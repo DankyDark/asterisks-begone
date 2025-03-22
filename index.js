@@ -123,30 +123,65 @@ function checkAndAddButton() {
   }, 100);
 }
 
-// Function to detect character actions in text
-// Character actions are text segments wrapped in asterisks alongside regular text
-// For example: "Hello there. *Character waves.* How are you today?"
+// Function to detect legitimate character actions versus excessive asterisk usage
+// Character actions are specific actions wrapped in asterisks mixed with regular text or dialogue
+// We want to detect:
+// 1. True character actions: "Hello there. *Character waves.* How are you today?"
+// 2. But allow cleaning when everything except dialogue is wrapped in asterisks
+//    like: "*You wake with a start.* "Hello," *she says with a smile.*"
 function hasCharacterActions(text) {
   if (!text) return false;
   
-  // If the entire text is wrapped in asterisks, it's not necessarily a character action
+  // If the entire text is wrapped in asterisks, it's not character actions
   if (text.startsWith('*') && text.endsWith('*') && text.indexOf('*', 1) === text.length - 1) {
     return false;
   }
   
-  // Find all content wrapped in asterisks
-  const asteriskWrappedContent = text.match(/\*[^*]+\*/g);
-  if (!asteriskWrappedContent) return false;
+  // Split the text into segments: dialogue (quoted text) and non-dialogue parts
+  // Check for both double quotes and single quotes for dialogue
+  const dialogueRegex = /["'][^"']+["']/g;
+  const dialogueMatches = text.match(dialogueRegex) || [];
   
-  // Get text without asterisk-wrapped content
-  let remainingText = text;
-  for (const match of asteriskWrappedContent) {
-    remainingText = remainingText.replace(match, '');
+  // Get text without dialogue
+  let nonDialogueText = text;
+  for (const match of dialogueMatches) {
+    nonDialogueText = nonDialogueText.replace(match, ' '); // Replace dialogue with spaces to preserve structure
   }
   
-  // If there's both asterisk-wrapped content and regular text, it likely contains character actions
-  remainingText = remainingText.replace(/\*/g, '').trim();
-  return asteriskWrappedContent.length > 0 && remainingText.length > 0;
+  // Find all content wrapped in asterisks in the non-dialogue text
+  const asteriskWrappedContent = nonDialogueText.match(/\*[^*]+\*/g) || [];
+  
+  // If we have no asterisk-wrapped content, return false
+  if (asteriskWrappedContent.length === 0) {
+    return false;
+  }
+  
+  // Get non-dialogue text without asterisk segments
+  let remainingNonDialogueText = nonDialogueText;
+  for (const match of asteriskWrappedContent) {
+    remainingNonDialogueText = remainingNonDialogueText.replace(match, ' ');
+  }
+  
+  // Remove remaining asterisks and trim
+  remainingNonDialogueText = remainingNonDialogueText.replace(/\*/g, '').trim();
+  
+  // Check if there's any substantial text outside of both dialogue and asterisk-wrapped segments
+  // If there's only dialogue and asterisk-wrapped content with no plain text between them,
+  // this is likely a case of overuse of asterisks rather than character actions
+  if (remainingNonDialogueText.length > 10) { // Require a meaningful amount of plain text (10+ chars)
+    // There's plain text outside both dialogue and asterisk-wrapped content
+    // This means we have a true mix of styles, likely with character actions
+    return true;
+  }
+  
+  // Check if the non-dialogue sections are entirely wrapped in asterisks
+  // If all non-dialogue text is wrapped in asterisks, this is excessive usage
+  // rather than intentional character actions
+  const nonDialogueContainsOnlyAsteriskWrapped = 
+    asteriskWrappedContent.join('').length >= nonDialogueText.trim().length * 0.8; // 80% threshold
+  
+  // Return false if everything is wrapped - this is excessive usage we want to clean
+  return !nonDialogueContainsOnlyAsteriskWrapped;
 }
 
 async function removeAsterisks() {

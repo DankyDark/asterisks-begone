@@ -130,7 +130,8 @@ function hasCharacterActions(text) {
   
   // Debug info for troubleshooting
   const debug = {
-    reason: ""
+    reason: "",
+    originalText: text.substring(0, 100) + (text.length > 100 ? "..." : "")
   };
   
   // If the entire text is wrapped in asterisks, it's not character actions
@@ -173,10 +174,50 @@ function hasCharacterActions(text) {
     }
   }
   
+  // Check if all non-dialogue sections are wrapped in asterisks by using a more precise approach
+  
   // Step 1: Identify dialogue text (in quotes)
-  const dialogueRegex = /["'][^"']+["']/g;
+  // Using a more comprehensive regex that handles common dialogue patterns
+  const dialogueRegex = /["'][^"']+["']|["'].*?["']/g; // Improved to match various dialogue formats
   const dialogueMatches = text.match(dialogueRegex) || [];
   
+  // Create a marked version of the text to analyze section patterns
+  let markedText = text;
+  for (const match of dialogueMatches) {
+    markedText = markedText.replace(match, "###DIALOGUE###");
+  }
+  
+  // Split by dialogue markers to get non-dialogue sections
+  const sections = markedText.split("###DIALOGUE###").filter(s => s.trim() !== "");
+  
+  console.log("[Asterisks-Begone] Section analysis:", {
+    sectionCount: sections.length,
+    sections: sections.map(s => s.substring(0, 30) + (s.length > 30 ? "..." : ""))
+  });
+  
+  // Check if all non-dialogue sections are wrapped in asterisks
+  const allNonDialogueSectionsWrapped = sections.every(section => {
+    const trimmed = section.trim();
+    
+    // Empty sections or sections with only formatting characters don't count
+    if (trimmed === "" || /^[\s\n,.;:!?"'-]+$/.test(trimmed)) return true;
+    
+    // Check if this section is fully wrapped in asterisks
+    const isWrapped = trimmed.startsWith('*') && trimmed.endsWith('*');
+    
+    // Allow sections without asterisks to pass
+    const hasAsterisks = trimmed.includes('*');
+    
+    return isWrapped || !hasAsterisks;
+  });
+  
+  if (sections.length > 0 && allNonDialogueSectionsWrapped) {
+    debug.reason = "All non-dialogue sections appear to be wrapped in asterisks";
+    console.log("[Asterisks-Begone] " + debug.reason, { sections });
+    return false; // Clean up asterisks
+  }
+  
+  // Standard analysis below - keep as fallback
   // Step 2: Remove dialogue from text to focus on non-dialogue parts
   let nonDialogueText = text;
   for (const match of dialogueMatches) {
@@ -212,6 +253,27 @@ function hasCharacterActions(text) {
     containsTemplateVars: /{{[^}]+}}/.test(remainingText),
     containsSpecialTokens: /<[^>]+>/.test(remainingText)
   });
+  
+  // If the dialogueMatches length is high and we have substantial remaining text,
+  // this might be a case where dialogue wasn't properly detected
+  if (dialogueMatches.length > 3 && cleanedRemainingText.length > 30) {
+    // Check if the remaining text looks like missed dialogue
+    const potentialDialogueFragments = remainingText.split(/[.!?]+/).filter(f => f.trim().length > 10);
+    
+    if (potentialDialogueFragments.length > 0) {
+      console.log("[Asterisks-Begone] Detected potential missed dialogue fragments:", {
+        fragments: potentialDialogueFragments.map(f => f.trim().substring(0, 30) + (f.length > 30 ? "..." : ""))
+      });
+      
+      // If this looks like dialogue that wasn't wrapped in quotes, it's probably
+      // a case where the text uses asterisks for everything except dialogue
+      if (text.indexOf('*') === 0 && text.lastIndexOf('*') === text.length - 1) {
+        debug.reason = "Text contains dialogue not wrapped in quotes but wrapped in asterisks";
+        console.log("[Asterisks-Begone] " + debug.reason);
+        return false; // Clean up asterisks
+      }
+    }
+  }
   
   // If we have significant MEANINGFUL text outside of both dialogue and asterisk-wrapped sections,
   // this suggests mixed formatting (likely real character actions)

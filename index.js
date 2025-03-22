@@ -181,69 +181,93 @@ async function removeAsterisks() {
       return;
     }
 
-    // We'll track which fields we've checked
+    // We'll track which fields we've checked and which should be cleaned
     let cleanedFields = [];
-    let preservedFields = [];
+    let anySectionShouldBeClean = false;
     let hasChanges = false;
 
-    // Helper function to check a field
-    const checkField = (fieldName, fieldText) => {
-      if (!fieldText) return null;
-      
-      // Check for character actions if the setting is enabled
-      if (extension_settings[extensionName].checkForCharacterActions) {
-        const shouldPreserve = hasCharacterActions(fieldText);
-        console.log(`[Asterisks-Begone] ${fieldName} check result: ${shouldPreserve}`);
-        
-        if (shouldPreserve) {
-          preservedFields.push(fieldName);
-          return { shouldClean: false, text: fieldText };
+    // First pass: check if ANY field should be cleaned
+    if (extension_settings[extensionName].checkForCharacterActions) {
+      // Check example messages
+      const examplesText = $("#mes_example_textarea").val();
+      if (examplesText && !hasCharacterActions(examplesText)) {
+        anySectionShouldBeClean = true;
+        console.log("[Asterisks-Begone] Example messages should be cleaned");
+      }
+
+      // Check first message
+      if (!anySectionShouldBeClean) {
+        const firstMessage = $("#firstmessage_textarea").val();
+        if (firstMessage && !hasCharacterActions(firstMessage)) {
+          anySectionShouldBeClean = true;
+          console.log("[Asterisks-Begone] First message should be cleaned");
         }
       }
-      
-      // Either setting is disabled or field should be cleaned
-      const cleanedText = fieldText.replace(/\*/g, "");
-      const changed = cleanedText !== fieldText;
-      
-      if (changed) {
-        cleanedFields.push(fieldName);
+
+      // Check alternate greetings
+      if (!anySectionShouldBeClean) {
+        const alternateGreetings = character?.data?.alternate_greetings || [];
+        for (let i = 0; i < alternateGreetings.length; i++) {
+          const greeting = alternateGreetings[i];
+          if (greeting && !hasCharacterActions(greeting)) {
+            anySectionShouldBeClean = true;
+            console.log(`[Asterisks-Begone] Alternate greeting ${i+1} should be cleaned`);
+            break;
+          }
+        }
       }
-      
-      return { shouldClean: true, text: cleanedText, changed };
-    };
+    } else {
+      // If not checking for character actions, we always clean everything
+      anySectionShouldBeClean = true;
+    }
 
-    // Process all fields
+    // If no section should be cleaned, show a message and return
+    if (!anySectionShouldBeClean && extension_settings[extensionName].checkForCharacterActions) {
+      toastr.warning("Character actions detected. To delete asterisks, disable setting.");
+      console.log("[Asterisks-Begone] No sections should be cleaned");
+      return;
+    }
+
+    // Second pass: clean ALL fields since at least one should be cleaned
+    console.log("[Asterisks-Begone] At least one section should be cleaned, cleaning ALL sections");
     
-    // Example messages
+    // Clean example messages
     const examplesText = $("#mes_example_textarea").val();
-    const examplesResult = checkField("Example messages", examplesText);
-    if (examplesResult?.changed) {
-      $("#mes_example_textarea").val(examplesResult.text);
-      hasChanges = true;
+    if (examplesText) {
+      const cleanedText = examplesText.replace(/\*/g, "");
+      if (cleanedText !== examplesText) {
+        $("#mes_example_textarea").val(cleanedText);
+        cleanedFields.push("Example messages");
+        hasChanges = true;
+      }
     }
 
-    // First message
+    // Clean first message
     const firstMessage = $("#firstmessage_textarea").val();
-    const firstMessageResult = checkField("First message", firstMessage);
-    if (firstMessageResult?.changed) {
-      $("#firstmessage_textarea").val(firstMessageResult.text);
-      hasChanges = true;
+    if (firstMessage) {
+      const cleanedText = firstMessage.replace(/\*/g, "");
+      if (cleanedText !== firstMessage) {
+        $("#firstmessage_textarea").val(cleanedText);
+        cleanedFields.push("First message");
+        hasChanges = true;
+      }
     }
 
-    // Alternate greetings
+    // Clean alternate greetings
     let altGreetingsChanged = false;
     const alternateGreetings = character?.data?.alternate_greetings || [];
     
     const cleanedGreetings = alternateGreetings.map((greeting, index) => {
       if (!greeting) return greeting;
       
-      const result = checkField(`Alternate greeting ${index + 1}`, greeting);
+      const cleanedGreeting = greeting.replace(/\*/g, "");
       
-      if (result?.changed) {
+      if (cleanedGreeting !== greeting) {
+        cleanedFields.push(`Alternate greeting ${index + 1}`);
         altGreetingsChanged = true;
       }
       
-      return result?.text || greeting;
+      return cleanedGreeting;
     });
 
     if (altGreetingsChanged) {
@@ -277,16 +301,6 @@ async function removeAsterisks() {
         toastr.error("Error saving changes: " + saveError.message);
         toastr.info("Please save the character manually to apply changes");
       }
-    } else if (preservedFields.length > 0) {
-      // No changes but some fields were preserved
-      const message = preservedFields.length > 1 
-        ? `Character actions detected in ${preservedFields.join(", ")}. No asterisks were removed.` 
-        : `Character actions detected in ${preservedFields[0]}. No asterisks were removed.`;
-      
-      toastr.warning(message);
-      toastr.info("The extension only removes asterisks when most paragraphs are wrapped. Disable 'Check for character actions' in settings to clean up anyway.");
-      
-      console.log("[Asterisks-Begone] No changes made, fields preserved:", preservedFields);
     } else {
       // No changes at all
       toastr.info("No asterisks found to remove");

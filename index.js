@@ -245,6 +245,47 @@ function hasCharacterActions(text) {
     }
   }
   
+  // Special check for the pattern where all descriptive paragraphs are fully wrapped in asterisks
+  // and there's a mix of dialogue and descriptive text - this pattern should be cleaned up
+  if (dialogueMatches.length > 0 && paragraphs.length > 3) {
+    // Classify paragraphs as descriptive or dialogue
+    const descriptiveParagraphs = paragraphs.filter(p => {
+      const trimmed = p.trim();
+      // Does not contain a quote but contains an asterisk
+      return !trimmed.includes('"') && !trimmed.includes("'") && trimmed.includes('*');
+    });
+    
+    // Check if all descriptive paragraphs are fully wrapped in asterisks
+    if (descriptiveParagraphs.length > 0) {
+      const fullyWrappedDescriptive = descriptiveParagraphs.filter(p => {
+        const trimmed = p.trim();
+        return trimmed.startsWith('*') && trimmed.endsWith('*');
+      }).length;
+      
+      const descriptiveWrappedRatio = fullyWrappedDescriptive / descriptiveParagraphs.length;
+      
+      console.log("[Asterisks-Begone] Descriptive paragraph analysis:", {
+        total: descriptiveParagraphs.length,
+        wrapped: fullyWrappedDescriptive,
+        ratio: descriptiveWrappedRatio
+      });
+      
+      // If almost all descriptive paragraphs are fully wrapped, clean up regardless of other factors
+      if (descriptiveWrappedRatio > 0.9) {
+        debug.reason = "Almost all descriptive paragraphs are fully wrapped in asterisks in a mixed format";
+        console.log("[Asterisks-Begone] " + debug.reason, { 
+          descriptiveParagraphs: descriptiveParagraphs.length,
+          fullyWrappedDescriptive,
+          descriptiveWrappedRatio
+        });
+        
+        // This pattern indicates formatting style rather than true character actions
+        finalDecision = false; // false = clean up
+        return finalDecision;
+      }
+    }
+  }
+  
   // Standard analysis below - keep as fallback
   // Step 2: Remove dialogue from text to focus on non-dialogue parts
   let nonDialogueText = text;

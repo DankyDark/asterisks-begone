@@ -137,12 +137,14 @@ function hasCharacterActions(text) {
   // Track if we've already decided based on a high-priority rule
   let hasHighPriorityDecision = false;
   let shouldCleanup = false;
+  let finalDecision = null; // Track the final decision explicitly
   
   // If the entire text is wrapped in asterisks, it's not character actions
   if (text.startsWith('*') && text.endsWith('*') && text.indexOf('*', 1) === text.length - 1) {
     debug.reason = "Entire text is wrapped in asterisks";
     console.log("[Asterisks-Begone] " + debug.reason, { text });
-    return false; // Definitive decision - clean up
+    finalDecision = false; // false = clean up
+    return finalDecision;
   }
   
   // First, let's check the paragraph pattern - this is a more reliable indicator
@@ -179,10 +181,11 @@ function hasCharacterActions(text) {
       hasHighPriorityDecision = true;
       shouldCleanup = true;
       
-      // Skip additional checks if this is a very clear case (>65% wrapped)
+      // Skip additional checks if this is a very clear case (>60% wrapped)
       if (wrappedRatio > 0.6) {
         console.log("[Asterisks-Begone] High wrapping ratio detected, cleaning up without further analysis");
-        return false; // Clean up asterisks immediately
+        finalDecision = false; // false = clean up
+        return finalDecision;
       }
     }
   }
@@ -237,7 +240,8 @@ function hasCharacterActions(text) {
     // Return early if we've already decided to clean up
     if (shouldCleanup) {
       console.log("[Asterisks-Begone] All non-dialogue sections wrapped, cleaning up");
-      return false;
+      finalDecision = false; // false = clean up
+      return finalDecision;
     }
   }
   
@@ -297,7 +301,8 @@ function hasCharacterActions(text) {
         
         // If we don't already have a high-priority decision, make one now
         if (!hasHighPriorityDecision) {
-          return false; // Clean up asterisks
+          finalDecision = false; // false = clean up
+          return finalDecision;
         }
       }
     }
@@ -308,7 +313,8 @@ function hasCharacterActions(text) {
   if (hasHighPriorityDecision) {
     debug.reason = "Using high-priority rule result: " + (shouldCleanup ? "clean up" : "preserve");
     console.log("[Asterisks-Begone] " + debug.reason);
-    return !shouldCleanup; // Return the opposite of shouldCleanup (false = clean up, true = preserve)
+    finalDecision = !shouldCleanup; // Return the opposite of shouldCleanup (false = clean up, true = preserve)
+    return finalDecision;
   }
   
   // Check if we have a high number of newlines and asterisks in the text, which might indicate
@@ -332,7 +338,8 @@ function hasCharacterActions(text) {
         withoutAsterisksLength: textWithoutDialogueAsterisks.length,
         ratio: textWithoutDialogueAsterisks.length / textWithoutDialogue.length
       });
-      return false; // Clean up asterisks
+      finalDecision = false; // Clean up asterisks
+      return finalDecision;
     }
   }
   
@@ -356,7 +363,8 @@ function hasCharacterActions(text) {
       console.log("[Asterisks-Begone] " + debug.reason, {
         cleanedText: cleanedRemainingText
       });
-      return false; // Safe to clean up
+      finalDecision = false; // Safe to clean up
+      return finalDecision;
     }
     
     debug.reason = "Found substantial plain text outside of dialogue and asterisk-wrapped sections";
@@ -366,7 +374,8 @@ function hasCharacterActions(text) {
       asteriskSectionCount: asteriskWrappedSections.length,
       remainingTextLength: cleanedRemainingText.length
     });
-    return true; // Preserve asterisks
+    finalDecision = true; // Preserve asterisks
+    return finalDecision;
   }
   
   // If we have just a small amount of text, it's likely just formatting artifacts
@@ -382,7 +391,11 @@ function hasCharacterActions(text) {
   // assume it's safe to clean up
   debug.reason = "No significant plain text found outside of dialogue and asterisk-wrapped sections";
   console.log("[Asterisks-Begone] " + debug.reason);
-  return false; // Clean up asterisks
+  finalDecision = false; // Clean up asterisks
+  
+  // Final debugging message to confirm the decision
+  console.log(`[Asterisks-Begone] Final decision: ${finalDecision ? "preserve" : "clean up"}`);
+  return finalDecision;
 }
 
 async function removeAsterisks() {
@@ -409,21 +422,40 @@ async function removeAsterisks() {
       const alternateGreetings = character?.data?.alternate_greetings || [];
       
       // Track which fields have character actions
-      const actionsInExamples = examplesText && hasCharacterActions(examplesText);
-      const actionsInFirstMessage = firstMessage && hasCharacterActions(firstMessage);
-      const actionsInAlternateGreetings = alternateGreetings.some(greeting => hasCharacterActions(greeting));
+      let fieldsWithCharacterActions = [];
       
-      // Check all text content for character actions
-      if (actionsInExamples || actionsInFirstMessage || actionsInAlternateGreetings) {
-        // Building a more descriptive message about where actions were found
-        let detectedIn = [];
-        if (actionsInExamples) detectedIn.push("example messages");
-        if (actionsInFirstMessage) detectedIn.push("first message");
-        if (actionsInAlternateGreetings) detectedIn.push("alternate greetings");
-        
-        const locationMessage = detectedIn.length > 1 
-          ? `in ${detectedIn.slice(0, -1).join(", ")} and ${detectedIn.slice(-1)}` 
-          : `in ${detectedIn[0]}`;
+      // Check all fields and collect results in an array for logging
+      if (examplesText) {
+        const result = hasCharacterActions(examplesText);
+        if (result) fieldsWithCharacterActions.push("example messages");
+        console.log(`[Asterisks-Begone] Examples check result: ${result}`);
+      }
+      
+      if (firstMessage) {
+        const result = hasCharacterActions(firstMessage);
+        if (result) fieldsWithCharacterActions.push("first message");
+        console.log(`[Asterisks-Begone] First message check result: ${result}`);
+      }
+      
+      for (let i = 0; i < alternateGreetings.length; i++) {
+        const greeting = alternateGreetings[i];
+        if (greeting) {
+          const result = hasCharacterActions(greeting);
+          if (result) {
+            fieldsWithCharacterActions.push(`alternate greeting ${i+1}`);
+            console.log(`[Asterisks-Begone] Alt greeting ${i+1} check result: ${result}`);
+          }
+        }
+      }
+      
+      // Check if we found any character actions
+      const hasAnyActions = fieldsWithCharacterActions.length > 0;
+      
+      if (hasAnyActions) {
+        // Build a descriptive message
+        const locationMessage = fieldsWithCharacterActions.length > 1 
+          ? `in ${fieldsWithCharacterActions.slice(0, -1).join(", ")} and ${fieldsWithCharacterActions.slice(-1)}` 
+          : `in ${fieldsWithCharacterActions[0]}`;
         
         toastr.warning(`Character actions detected ${locationMessage}. No asterisks were removed.`);
         console.log(`[Asterisks-Begone] Character actions detected ${locationMessage}, operation aborted.`);

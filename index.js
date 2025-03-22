@@ -140,6 +140,39 @@ function hasCharacterActions(text) {
     return false;
   }
   
+  // First, let's check the paragraph pattern - this is a more reliable indicator
+  const paragraphs = text.split(/\n+/).filter(p => p.trim() !== '');
+  if (paragraphs.length > 1) {
+    const wrappedParagraphs = paragraphs.filter(p => {
+      const trimmed = p.trim();
+      return trimmed.startsWith('*') && trimmed.endsWith('*');
+    }).length;
+    
+    const wrappedRatio = wrappedParagraphs / paragraphs.length;
+    
+    // Log paragraph structure for debugging
+    console.log("[Asterisks-Begone] Paragraph analysis:", {
+      total: paragraphs.length,
+      wrapped: wrappedParagraphs,
+      ratio: wrappedRatio,
+      paragraphs: paragraphs.map(p => ({
+        starts: p.trim().startsWith('*'),
+        ends: p.trim().endsWith('*'),
+        length: p.length
+      }))
+    });
+    
+    if (wrappedRatio > 0.5) { // If more than half of paragraphs are wrapped
+      debug.reason = `Most paragraphs (${Math.round(wrappedRatio * 100)}%) are wrapped in asterisks`;
+      console.log("[Asterisks-Begone] " + debug.reason, { 
+        paragraphs: paragraphs.length,
+        wrappedParagraphs,
+        wrappedRatio
+      });
+      return false; // Clean up asterisks
+    }
+  }
+  
   // Step 1: Identify dialogue text (in quotes)
   const dialogueRegex = /["'][^"']+["']/g;
   const dialogueMatches = text.match(dialogueRegex) || [];
@@ -163,45 +196,46 @@ function hasCharacterActions(text) {
   // Step 5: Clean up remaining text and check if anything substantial is left
   remainingText = remainingText.replace(/\*/g, '').trim(); // Remove any stray asterisks
   
-  // If we have significant text outside of both dialogue and asterisk-wrapped sections,
+  // Remove whitespace, punctuation and common formatting artifacts for more accurate detection
+  const cleanedRemainingText = remainingText
+    .replace(/[\s,.;:!?'"\-_—–()[\]{}]+/g, '') // Remove punctuation and whitespace
+    .replace(/\s+/g, ''); // Remove any remaining whitespace
+  
+  // Log for debugging
+  console.log("[Asterisks-Begone] Plain text analysis:", {
+    raw: remainingText,
+    cleaned: cleanedRemainingText,
+    rawLength: remainingText.length,
+    cleanedLength: cleanedRemainingText.length
+  });
+  
+  // If we have significant MEANINGFUL text outside of both dialogue and asterisk-wrapped sections,
   // this suggests mixed formatting (likely real character actions)
-  if (remainingText.length > 10) {
+  if (cleanedRemainingText.length > 10) {
     debug.reason = "Found substantial plain text outside of dialogue and asterisk-wrapped sections";
     console.log("[Asterisks-Begone] " + debug.reason, { 
       textLength: text.length,
       dialogueCount: dialogueMatches.length,
       asteriskSectionCount: asteriskWrappedSections.length,
-      remainingTextLength: remainingText.length
+      remainingTextLength: cleanedRemainingText.length
     });
     return true; // Preserve asterisks
   }
   
-  // Step 6: Check if most non-dialogue content is wrapped in asterisks
-  // If there's no substantial plain text, check if paragraphs are mainly wrapped in asterisks
-  const paragraphs = text.split(/\n+/).filter(p => p.trim() !== '');
-  if (paragraphs.length > 1) {
-    const wrappedParagraphs = paragraphs.filter(p => {
-      const trimmed = p.trim();
-      return trimmed.startsWith('*') && trimmed.endsWith('*');
-    }).length;
-    
-    const wrappedRatio = wrappedParagraphs / paragraphs.length;
-    
-    if (wrappedRatio > 0.5) { // If more than half of paragraphs are wrapped
-      debug.reason = `Most paragraphs (${Math.round(wrappedRatio * 100)}%) are wrapped in asterisks`;
-      console.log("[Asterisks-Begone] " + debug.reason, { 
-        paragraphs: paragraphs.length,
-        wrappedParagraphs,
-        wrappedRatio
-      });
-      return false; // Clean up asterisks
-    }
+  // If we have just a small amount of text, it's likely just formatting artifacts
+  if (cleanedRemainingText.length > 0) {
+    debug.reason = "Found minimal plain text, likely just formatting artifacts";
+    console.log("[Asterisks-Begone] " + debug.reason, {
+      plainTextLength: cleanedRemainingText.length,
+      plainText: cleanedRemainingText
+    });
   }
   
-  // By default, be cautious - if we can't determine for sure, preserve the asterisks
-  debug.reason = "Couldn't determine definitively, defaulting to preserve";
+  // By default, if there's no significant plain text and we didn't already return,
+  // assume it's safe to clean up
+  debug.reason = "No significant plain text found outside of dialogue and asterisk-wrapped sections";
   console.log("[Asterisks-Begone] " + debug.reason);
-  return true; // Preserve asterisks
+  return false; // Clean up asterisks
 }
 
 async function removeAsterisks() {

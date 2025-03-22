@@ -180,7 +180,8 @@ function hasCharacterActions(text) {
       shouldCleanup = true;
       
       // Skip additional checks if this is a very clear case (>65% wrapped)
-      if (wrappedRatio > 0.65) {
+      if (wrappedRatio > 0.6) {
+        console.log("[Asterisks-Begone] High wrapping ratio detected, cleaning up without further analysis");
         return false; // Clean up asterisks immediately
       }
     }
@@ -235,6 +236,7 @@ function hasCharacterActions(text) {
     
     // Return early if we've already decided to clean up
     if (shouldCleanup) {
+      console.log("[Asterisks-Begone] All non-dialogue sections wrapped, cleaning up");
       return false;
     }
   }
@@ -307,6 +309,31 @@ function hasCharacterActions(text) {
     debug.reason = "Using high-priority rule result: " + (shouldCleanup ? "clean up" : "preserve");
     console.log("[Asterisks-Begone] " + debug.reason);
     return !shouldCleanup; // Return the opposite of shouldCleanup (false = clean up, true = preserve)
+  }
+  
+  // Check if we have a high number of newlines and asterisks in the text, which might indicate
+  // formatting needs cleaning up even if not caught by the paragraph analysis
+  const newlineCount = (text.match(/\n/g) || []).length;
+  const asteriskCount = (text.match(/\*/g) || []).length;
+  
+  if (newlineCount > 10 && asteriskCount > 10) {
+    const textWithoutDialogue = nonDialogueText.trim();
+    const textWithoutDialogueAsterisks = textWithoutDialogue.replace(/\*/g, '').trim();
+    
+    // If removing asterisks from non-dialogue text significantly reduces content,
+    // it suggests the text is heavily wrapped in asterisks
+    if (textWithoutDialogue.length > 0 && 
+        textWithoutDialogueAsterisks.length < textWithoutDialogue.length * 0.7) {
+      debug.reason = "Text has high newline and asterisk count, and removing asterisks significantly reduces content";
+      console.log("[Asterisks-Begone] " + debug.reason, {
+        newlineCount,
+        asteriskCount,
+        originalLength: textWithoutDialogue.length,
+        withoutAsterisksLength: textWithoutDialogueAsterisks.length,
+        ratio: textWithoutDialogueAsterisks.length / textWithoutDialogue.length
+      });
+      return false; // Clean up asterisks
+    }
   }
   
   // If we have significant MEANINGFUL text outside of both dialogue and asterisk-wrapped sections,

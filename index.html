@@ -5,6 +5,7 @@
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down"></div>
     </div>
     <div class="inline-drawer-content">
+      <!-- Settings Controls -->
       <div class="flex-container">
         <label class="checkbox_label" for="asterisks-begone-enabled">
           <input type="checkbox" id="asterisks-begone-enabled" />
@@ -17,23 +18,26 @@
           <span>Check for character actions</span>
         </label>
       </div>
-      <small>
-        When enabled, an "Asterisks Begone" button will be added to the
+      
+      <hr class="sysHR" style="margin: 10px 0;" />
+      
+      <!-- Settings Descriptions -->
+      <div class="settings_description">
+        <p><strong>Enabled:</strong> When enabled, an "Asterisks Begone" button will be added to the
         character edit page. Clicking it will remove asterisks from all
-        greetings and examples of dialogue.
-        <br />
-        <br />
-        When "Check for character actions" is enabled, the extension will detect if any greetings
+        greetings and examples of dialogue.</p>
+        
+        <p><strong>Check for character actions:</strong> When enabled, the extension will detect if any greetings
         or examples contain character actions wrapped in asterisks (like *{{char}} nods*) mixed with regular text
-        and preserve them by not removing any asterisks in that text.
-        <br />
-        It's smart enough to distinguish between legitimate character actions and excessive asterisk usage.
-        When everything except dialogue is wrapped in asterisks, it will still clean them up.
-        <br />
-        <br />
-        <strong>Warning:</strong> Please back up your character card first
-        before proceeding.
-      </small>
+        and preserve them by not removing any asterisks in that text.</p>
+        
+        <p>The smart detection can distinguish between legitimate character actions and excessive asterisk usage.
+        When everything except dialogue is wrapped in asterisks, it will still clean them up.</p>
+        
+        <p class="extensions_warning"><strong>Warning:</strong> Please back up your character card first
+        before proceeding.</p>
+      </div>
+      
       <hr class="sysHR" />
     </div>
   </div>

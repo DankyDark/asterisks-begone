@@ -3,6 +3,7 @@ import { saveSettingsDebounced } from "../../../../script.js";
 const extensionName = "asterisks-begone";
 const defaultSettings = {
   enabled: true,
+  checkForCharacterActions: true, // When true, will check if text contains character actions before removing asterisks
 };
 
 let buttonAdded = false;
@@ -12,6 +13,11 @@ let buttonAddTimeout = null;
 extension_settings[extensionName] = extension_settings[extensionName] || {};
 if (!extension_settings[extensionName].hasOwnProperty("enabled")) {
   extension_settings[extensionName].enabled = defaultSettings.enabled;
+  saveSettingsDebounced();
+}
+if (!extension_settings[extensionName].hasOwnProperty("checkForCharacterActions")) {
+  // Initialize the checkForCharacterActions setting if it doesn't exist
+  extension_settings[extensionName].checkForCharacterActions = defaultSettings.checkForCharacterActions;
   saveSettingsDebounced();
 }
 
@@ -36,6 +42,11 @@ async function addSettings() {
       extension_settings[extensionName].enabled
     );
 
+    $("#asterisks-begone-check-actions").prop(
+      "checked",
+      extension_settings[extensionName].checkForCharacterActions
+    );
+
     $("#asterisks-begone-enabled").on("change", function () {
       extension_settings[extensionName].enabled = !!$(this).prop("checked");
       saveSettingsDebounced();
@@ -46,6 +57,11 @@ async function addSettings() {
         $(".asterisks-begone-button").remove();
         buttonAdded = false;
       }
+    });
+
+    $("#asterisks-begone-check-actions").on("change", function () {
+      extension_settings[extensionName].checkForCharacterActions = !!$(this).prop("checked");
+      saveSettingsDebounced();
     });
   } catch (error) {
     console.error(`[${extensionName}] Error adding settings:`, error);
@@ -107,6 +123,32 @@ function checkAndAddButton() {
   }, 100);
 }
 
+// Function to detect character actions in text
+// Character actions are text segments wrapped in asterisks alongside regular text
+// For example: "Hello there. *Character waves.* How are you today?"
+function hasCharacterActions(text) {
+  if (!text) return false;
+  
+  // If the entire text is wrapped in asterisks, it's not necessarily a character action
+  if (text.startsWith('*') && text.endsWith('*') && text.indexOf('*', 1) === text.length - 1) {
+    return false;
+  }
+  
+  // Find all content wrapped in asterisks
+  const asteriskWrappedContent = text.match(/\*[^*]+\*/g);
+  if (!asteriskWrappedContent) return false;
+  
+  // Get text without asterisk-wrapped content
+  let remainingText = text;
+  for (const match of asteriskWrappedContent) {
+    remainingText = remainingText.replace(match, '');
+  }
+  
+  // If there's both asterisk-wrapped content and regular text, it likely contains character actions
+  remainingText = remainingText.replace(/\*/g, '').trim();
+  return asteriskWrappedContent.length > 0 && remainingText.length > 0;
+}
+
 async function removeAsterisks() {
   try {
     const context = getContext();
@@ -122,6 +164,22 @@ async function removeAsterisks() {
       console.error("[Asterisks-Begone] Character not found in context");
       toastr.error("Character data not found");
       return;
+    }
+
+    // Check for character actions if the setting is enabled
+    if (extension_settings[extensionName].checkForCharacterActions) {
+      const examplesText = $("#mes_example_textarea").val();
+      const firstMessage = $("#firstmessage_textarea").val();
+      const alternateGreetings = character?.data?.alternate_greetings || [];
+      
+      // Check all text content for character actions
+      if (hasCharacterActions(examplesText) || 
+          hasCharacterActions(firstMessage) ||
+          alternateGreetings.some(greeting => hasCharacterActions(greeting))) {
+        toastr.warning("Character actions found, not removing any asterisks.");
+        console.log("[Asterisks-Begone] Character actions detected, operation aborted.");
+        return;
+      }
     }
 
     let hasChanges = false;

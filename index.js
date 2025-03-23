@@ -184,21 +184,47 @@ async function removeAsterisks() {
     // We'll track which fields we've checked and which should be cleaned
     let cleanedFields = [];
     let anySectionShouldBeClean = false;
+    let anyAsterisksFound = false;
     let hasChanges = false;
+
+    // First check if there are ANY asterisks to remove at all
+    const examplesText = $("#mes_example_textarea").val();
+    if (examplesText && examplesText.includes('*')) {
+      anyAsterisksFound = true;
+    }
+
+    const firstMessage = $("#firstmessage_textarea").val();
+    if (firstMessage && firstMessage.includes('*')) {
+      anyAsterisksFound = true;
+    }
+
+    const alternateGreetings = character?.data?.alternate_greetings || [];
+    for (let i = 0; i < alternateGreetings.length; i++) {
+      const greeting = alternateGreetings[i];
+      if (greeting && greeting.includes('*')) {
+        anyAsterisksFound = true;
+        break;
+      }
+    }
+
+    // If no asterisks found at all, show appropriate message and return
+    if (!anyAsterisksFound) {
+      toastr.info("No asterisks found to remove");
+      console.log("[Asterisks-Begone] No asterisks found to remove");
+      return;
+    }
 
     // First pass: check if ANY field should be cleaned
     if (extension_settings[extensionName].checkForCharacterActions) {
       // Check example messages
-      const examplesText = $("#mes_example_textarea").val();
-      if (examplesText && !hasCharacterActions(examplesText)) {
+      if (examplesText && examplesText.includes('*') && !hasCharacterActions(examplesText)) {
         anySectionShouldBeClean = true;
         console.log("[Asterisks-Begone] Example messages should be cleaned");
       }
 
       // Check first message
       if (!anySectionShouldBeClean) {
-        const firstMessage = $("#firstmessage_textarea").val();
-        if (firstMessage && !hasCharacterActions(firstMessage)) {
+        if (firstMessage && firstMessage.includes('*') && !hasCharacterActions(firstMessage)) {
           anySectionShouldBeClean = true;
           console.log("[Asterisks-Begone] First message should be cleaned");
         }
@@ -206,10 +232,9 @@ async function removeAsterisks() {
 
       // Check alternate greetings
       if (!anySectionShouldBeClean) {
-        const alternateGreetings = character?.data?.alternate_greetings || [];
         for (let i = 0; i < alternateGreetings.length; i++) {
           const greeting = alternateGreetings[i];
-          if (greeting && !hasCharacterActions(greeting)) {
+          if (greeting && greeting.includes('*') && !hasCharacterActions(greeting)) {
             anySectionShouldBeClean = true;
             console.log(`[Asterisks-Begone] Alternate greeting ${i+1} should be cleaned`);
             break;
@@ -232,7 +257,6 @@ async function removeAsterisks() {
     console.log("[Asterisks-Begone] At least one section should be cleaned, cleaning ALL sections");
     
     // Clean example messages
-    const examplesText = $("#mes_example_textarea").val();
     if (examplesText) {
       const cleanedText = examplesText.replace(/\*/g, "");
       if (cleanedText !== examplesText) {
@@ -243,7 +267,6 @@ async function removeAsterisks() {
     }
 
     // Clean first message
-    const firstMessage = $("#firstmessage_textarea").val();
     if (firstMessage) {
       const cleanedText = firstMessage.replace(/\*/g, "");
       if (cleanedText !== firstMessage) {
@@ -255,7 +278,6 @@ async function removeAsterisks() {
 
     // Clean alternate greetings
     let altGreetingsChanged = false;
-    const alternateGreetings = character?.data?.alternate_greetings || [];
     
     const cleanedGreetings = alternateGreetings.map((greeting, index) => {
       if (!greeting) return greeting;
@@ -302,7 +324,7 @@ async function removeAsterisks() {
         toastr.info("Please save the character manually to apply changes");
       }
     } else {
-      // No changes at all
+      // No changes at all (this should rarely happen now with the initial check)
       toastr.info("No asterisks found to remove");
       console.log("[Asterisks-Begone] No asterisks found to remove");
     }

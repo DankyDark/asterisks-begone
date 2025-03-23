@@ -107,11 +107,11 @@ function checkAndAddButton() {
 function hasCharacterActions(text) {
   if (!text) return false;
   
-  console.log("[Asterisks-Begone] Analyzing text:", text.substring(0, 100) + (text.length > 100 ? "..." : ""));
+  // console.log("[Asterisks-Begone] Analyzing text:", text.substring(0, 100) + (text.length > 100 ? "..." : ""));
   
   // If the entire text is wrapped in asterisks, clean it up
   if (text.startsWith('*') && text.endsWith('*') && text.indexOf('*', 1) === text.length - 1) {
-    console.log("[Asterisks-Begone] Entire text is wrapped in asterisks - cleaning up");
+    // console.log("[Asterisks-Begone] Entire text is wrapped in asterisks - cleaning up");
     return false; // false = clean up
   }
   
@@ -125,21 +125,21 @@ function hasCharacterActions(text) {
     
     const wrappedRatio = wrappedParagraphs / paragraphs.length;
     
-    console.log("[Asterisks-Begone] Paragraph analysis:", {
-      total: paragraphs.length,
-      wrapped: wrappedParagraphs,
-      ratio: wrappedRatio
-    });
+    // console.log("[Asterisks-Begone] Paragraph analysis:", {
+    //   total: paragraphs.length,
+    //   wrapped: wrappedParagraphs,
+    //   ratio: wrappedRatio
+    // });
     
     // If more than 60% of paragraphs are wrapped, clean up
     if (wrappedRatio > 0.6) {
-      console.log("[Asterisks-Begone] Most paragraphs are wrapped in asterisks - cleaning up");
+      // console.log("[Asterisks-Begone] Most paragraphs are wrapped in asterisks - cleaning up");
       return false; // false = clean up
     }
   }
   
   // By default, preserve asterisks (assume they are character actions)
-  console.log("[Asterisks-Begone] Preserving asterisks by default");
+  // console.log("[Asterisks-Begone] Preserving asterisks by default");
   return true; // true = preserve
 }
 
@@ -196,14 +196,14 @@ async function removeAsterisks() {
       // Check example messages
       if (examplesText && examplesText.includes('*') && !hasCharacterActions(examplesText)) {
         anySectionShouldBeClean = true;
-        console.log("[Asterisks-Begone] Example messages should be cleaned");
+        // console.log("[Asterisks-Begone] Example messages should be cleaned");
       }
 
       // Check first message if needed
       if (!anySectionShouldBeClean && firstMessage && firstMessage.includes('*') && 
           !hasCharacterActions(firstMessage)) {
         anySectionShouldBeClean = true;
-        console.log("[Asterisks-Begone] First message should be cleaned");
+        // console.log("[Asterisks-Begone] First message should be cleaned");
       }
 
       // Check alternate greetings if needed
@@ -212,7 +212,7 @@ async function removeAsterisks() {
           const greeting = alternateGreetings[i];
           if (greeting && greeting.includes('*') && !hasCharacterActions(greeting)) {
             anySectionShouldBeClean = true;
-            console.log(`[Asterisks-Begone] Alternate greeting ${i+1} should be cleaned`);
+            // console.log(`[Asterisks-Begone] Alternate greeting ${i+1} should be cleaned`);
             break;
           }
         }
@@ -225,12 +225,12 @@ async function removeAsterisks() {
     // If no section should be cleaned, show a message and return
     if (!anySectionShouldBeClean && extension_settings[extensionName].checkForCharacterActions) {
       toastr.warning("Character actions detected. To delete asterisks, disable setting.");
-      console.log("[Asterisks-Begone] No sections should be cleaned");
+      // console.log("[Asterisks-Begone] No sections should be cleaned");
       return;
     }
 
     // Second pass: clean ALL fields since at least one should be cleaned
-    console.log("[Asterisks-Begone] At least one section should be cleaned, cleaning ALL sections");
+    // console.log("[Asterisks-Begone] At least one section should be cleaned, cleaning ALL sections");
     
     // Clean example messages
     if (examplesText) {

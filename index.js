@@ -1,24 +1,24 @@
 import { extension_settings, getContext } from "../../../extensions.js";
 import { saveSettingsDebounced } from "../../../../script.js";
+
 const extensionName = "asterisks-begone";
 const defaultSettings = {
   enabled: true,
   checkForCharacterActions: true, // When true, will check if text contains character actions before removing asterisks
 };
 
+// Setup variables
 let buttonAdded = false;
 let isAddingButton = false;
 let buttonAddTimeout = null;
 
+// Initialize settings
 extension_settings[extensionName] = extension_settings[extensionName] || {};
-if (!extension_settings[extensionName].hasOwnProperty("enabled")) {
-  extension_settings[extensionName].enabled = defaultSettings.enabled;
-  saveSettingsDebounced();
-}
-if (!extension_settings[extensionName].hasOwnProperty("checkForCharacterActions")) {
-  // Initialize the checkForCharacterActions setting if it doesn't exist
-  extension_settings[extensionName].checkForCharacterActions = defaultSettings.checkForCharacterActions;
-  saveSettingsDebounced();
+for (const [key, value] of Object.entries(defaultSettings)) {
+  if (!extension_settings[extensionName].hasOwnProperty(key)) {
+    extension_settings[extensionName][key] = value;
+    saveSettingsDebounced();
+  }
 }
 
 async function addSettings() {
@@ -27,30 +27,22 @@ async function addSettings() {
       `/scripts/extensions/third-party/${extensionName}/index.html`
     );
     if (!response.ok) {
-      console.error(
-        `[${extensionName}] Error loading settings HTML:`,
-        response.statusText
-      );
+      console.error(`[${extensionName}] Error loading settings HTML:`, response.statusText);
       return;
     }
 
     const html = await response.text();
     $("#extensions_settings").append(html);
 
-    $("#asterisks-begone-enabled").prop(
-      "checked",
-      extension_settings[extensionName].enabled
-    );
+    // Initialize checkboxes
+    $("#asterisks-begone-enabled").prop("checked", extension_settings[extensionName].enabled);
+    $("#asterisks-begone-check-actions").prop("checked", extension_settings[extensionName].checkForCharacterActions);
 
-    $("#asterisks-begone-check-actions").prop(
-      "checked",
-      extension_settings[extensionName].checkForCharacterActions
-    );
-
+    // Add event listeners
     $("#asterisks-begone-enabled").on("change", function () {
       extension_settings[extensionName].enabled = !!$(this).prop("checked");
       saveSettingsDebounced();
-
+      
       if (extension_settings[extensionName].enabled) {
         checkAndAddButton();
       } else {
@@ -69,48 +61,35 @@ async function addSettings() {
 }
 
 function checkAndAddButton() {
-  if (buttonAddTimeout) {
-    clearTimeout(buttonAddTimeout);
-    buttonAddTimeout = null;
-  }
+  if (buttonAddTimeout) clearTimeout(buttonAddTimeout);
 
   buttonAddTimeout = setTimeout(() => {
     if (isAddingButton) return;
-
+    
     try {
       isAddingButton = true;
-
       $(".asterisks-begone-button").remove();
 
-      if (!extension_settings[extensionName].enabled) {
-        buttonAdded = false;
+      if (!extension_settings[extensionName].enabled || $(".asterisks-begone-button").length > 0) {
+        buttonAdded = extension_settings[extensionName].enabled && $(".asterisks-begone-button").length > 0;
         isAddingButton = false;
         return;
       }
 
-      if ($(".asterisks-begone-button").length > 0) {
-        buttonAdded = true;
-        isAddingButton = false;
-        return;
-      }
-
-      const firstMessageLabel = $('div:contains("First message")').filter(
-        function () {
-          return $(this).text().trim() === "First message";
-        }
-      );
-
-      const button = $("<input>", {
-        type: "button",
-        id: "asterisks-begone-button",
-        class: "menu_button asterisks-begone-button",
-        value: "Asterisks Begone",
-        style:
-          "display: inline-block !important; visibility: visible !important; opacity: 1 !important;",
-        click: removeAsterisks,
+      const firstMessageLabel = $('div:contains("First message")').filter(function() {
+        return $(this).text().trim() === "First message";
       });
 
       if (firstMessageLabel.length) {
+        const button = $("<input>", {
+          type: "button",
+          id: "asterisks-begone-button",
+          class: "menu_button asterisks-begone-button",
+          value: "Asterisks Begone",
+          style: "display: inline-block !important; visibility: visible !important; opacity: 1 !important;",
+          click: removeAsterisks,
+        });
+        
         button.insertAfter(firstMessageLabel);
         buttonAdded = true;
         console.log("[Asterisks-Begone] Loaded.");
@@ -181,33 +160,31 @@ async function removeAsterisks() {
       return;
     }
 
-    // We'll track which fields we've checked and which should be cleaned
+    // Track state
     let cleanedFields = [];
     let anySectionShouldBeClean = false;
     let anyAsterisksFound = false;
     let hasChanges = false;
+    
+    // Get field values
+    const examplesText = $("#mes_example_textarea").val();
+    const firstMessage = $("#firstmessage_textarea").val();
+    const alternateGreetings = character?.data?.alternate_greetings || [];
 
     // First check if there are ANY asterisks to remove at all
-    const examplesText = $("#mes_example_textarea").val();
-    if (examplesText && examplesText.includes('*')) {
+    if ((examplesText && examplesText.includes('*')) || 
+        (firstMessage && firstMessage.includes('*'))) {
       anyAsterisksFound = true;
-    }
-
-    const firstMessage = $("#firstmessage_textarea").val();
-    if (firstMessage && firstMessage.includes('*')) {
-      anyAsterisksFound = true;
-    }
-
-    const alternateGreetings = character?.data?.alternate_greetings || [];
-    for (let i = 0; i < alternateGreetings.length; i++) {
-      const greeting = alternateGreetings[i];
-      if (greeting && greeting.includes('*')) {
-        anyAsterisksFound = true;
-        break;
+    } else {
+      for (const greeting of alternateGreetings) {
+        if (greeting && greeting.includes('*')) {
+          anyAsterisksFound = true;
+          break;
+        }
       }
     }
 
-    // If no asterisks found at all, show appropriate message and return
+    // If no asterisks found, show message and return
     if (!anyAsterisksFound) {
       toastr.info("No asterisks found to remove");
       console.log("[Asterisks-Begone] No asterisks found to remove");
@@ -222,15 +199,14 @@ async function removeAsterisks() {
         console.log("[Asterisks-Begone] Example messages should be cleaned");
       }
 
-      // Check first message
-      if (!anySectionShouldBeClean) {
-        if (firstMessage && firstMessage.includes('*') && !hasCharacterActions(firstMessage)) {
-          anySectionShouldBeClean = true;
-          console.log("[Asterisks-Begone] First message should be cleaned");
-        }
+      // Check first message if needed
+      if (!anySectionShouldBeClean && firstMessage && firstMessage.includes('*') && 
+          !hasCharacterActions(firstMessage)) {
+        anySectionShouldBeClean = true;
+        console.log("[Asterisks-Begone] First message should be cleaned");
       }
 
-      // Check alternate greetings
+      // Check alternate greetings if needed
       if (!anySectionShouldBeClean) {
         for (let i = 0; i < alternateGreetings.length; i++) {
           const greeting = alternateGreetings[i];
@@ -278,17 +254,14 @@ async function removeAsterisks() {
 
     // Clean alternate greetings
     let altGreetingsChanged = false;
-    
     const cleanedGreetings = alternateGreetings.map((greeting, index) => {
       if (!greeting) return greeting;
       
       const cleanedGreeting = greeting.replace(/\*/g, "");
-      
       if (cleanedGreeting !== greeting) {
         cleanedFields.push(`Alternate greeting ${index + 1}`);
         altGreetingsChanged = true;
       }
-      
       return cleanedGreeting;
     });
 
@@ -303,19 +276,14 @@ async function removeAsterisks() {
       }
     }
 
-    // Display appropriate messages based on what we did
+    // Display appropriate messages and save changes
     if (hasChanges) {
       try {
         // Trigger changes to save
-        const exampleTextarea = $("#mes_example_textarea");
-        exampleTextarea.trigger("change");
-        
-        const firstMessageTextarea = $("#firstmessage_textarea");
-        firstMessageTextarea.trigger("change");
-        
+        $("#mes_example_textarea").trigger("change");
+        $("#firstmessage_textarea").trigger("change");
         $("#create_button").trigger("click");
         
-        // Show appropriate success message
         toastr.success("Asterisks, BEGONE!");
         console.log("[Asterisks-Begone] Fields cleaned:", cleanedFields);
       } catch (saveError) {
@@ -324,7 +292,6 @@ async function removeAsterisks() {
         toastr.info("Please save the character manually to apply changes");
       }
     } else {
-      // No changes at all (this should rarely happen now with the initial check)
       toastr.info("No asterisks found to remove");
       console.log("[Asterisks-Begone] No asterisks found to remove");
     }
@@ -337,17 +304,11 @@ async function removeAsterisks() {
 $(document).ready(function () {
   addSettings();
 
-  $(document).on(
-    "click",
-    ".character_select, #rm_button_selected_ch",
-    function () {
-      setTimeout(checkAndAddButton, 300);
-    }
-  );
+  $(document).on("click", ".character_select, #rm_button_selected_ch", 
+    () => setTimeout(checkAndAddButton, 300));
 
-  $(document).on("click", ".advanced_button, .toggle_advanced", function () {
-    setTimeout(checkAndAddButton, 300);
-  });
+  $(document).on("click", ".advanced_button, .toggle_advanced", 
+    () => setTimeout(checkAndAddButton, 300));
 
   setTimeout(checkAndAddButton, 1000);
   setTimeout(checkAndAddButton, 2000);

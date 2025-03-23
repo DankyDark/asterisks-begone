@@ -5,40 +5,36 @@
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down"></div>
     </div>
     <div class="inline-drawer-content">
-      <!-- Settings Controls -->
+      <!-- Enabled Setting -->
       <div class="flex-container">
         <label class="checkbox_label" for="asterisks-begone-enabled">
           <input type="checkbox" id="asterisks-begone-enabled" />
           <span>Enabled</span>
         </label>
       </div>
+      <div class="settings_description">
+        <p>Adds an "Asterisks Begone" button to the character edit page to remove asterisks from greetings and examples.</p>
+      </div>
+      
+      <hr class="sysHR" style="margin: 10px 0;" />
+      
+      <!-- Check for character actions Setting -->
       <div class="flex-container">
         <label class="checkbox_label" for="asterisks-begone-check-actions">
           <input type="checkbox" id="asterisks-begone-check-actions" />
           <span>Check for character actions</span>
         </label>
       </div>
+      <div class="settings_description">
+        <p>Preserves legitimate character actions (like *{{char}} nods*) mixed with regular text.</p>
+        <p>Smart detection can distinguish between character actions and excessive asterisk usage. When most paragraphs are wrapped in asterisks, it will clean them up.</p>
+        <p>Disable this setting to remove all asterisks regardless of content.</p>
+      </div>
       
       <hr class="sysHR" style="margin: 10px 0;" />
       
-      <!-- Settings Descriptions -->
-      <div class="settings_description">
-        <p><strong>Enabled:</strong> When enabled, an "Asterisks Begone" button will be added to the
-        character edit page. Clicking it will remove asterisks from all
-        greetings and examples of dialogue.</p>
-        
-        <p><strong>Check for character actions:</strong> When enabled, the extension will detect if any greetings
-        or examples contain character actions wrapped in asterisks (like *{{char}} nods*) mixed with regular text
-        and preserve them by not removing any asterisks in that text.</p>
-        
-        <p>The smart detection can distinguish between legitimate character actions and excessive asterisk usage.
-        When everything except dialogue is wrapped in asterisks, it will still clean them up.</p>
-        
-        <p class="extensions_warning"><strong>Warning:</strong> Please back up your character card first
-        before proceeding.</p>
-      </div>
+      <p class="extensions_warning"><strong>Warning:</strong> Please back up your character card before proceeding.</p>
       
-      <hr class="sysHR" />
     </div>
   </div>
 </div>

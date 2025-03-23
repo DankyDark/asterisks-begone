@@ -1,46 +1,31 @@
 # Asterisks Begone Extension ✨
 
-Welcome to **Asterisks Begone**, an extension for [SillyTavern](https://github.com/SillyTavern/SillyTavern)! This extension adds an "Asterisk Begone" button to your character edit page, allowing you to clean up unwanted asterisks in character card greetings with a single click.
+Welcome to **Asterisks Begone**, an extension for [SillyTavern](https://github.com/SillyTavern/SillyTavern) that adds a button to clean up unwanted asterisks in character card greetings with a single click.
 
 [![Showcase](https://i.imgur.com/wjSN4Jf.gif)](https://i.imgur.com/wjSN4Jf.gifv)
 
----
-
 ## Features
 
-- **Single-Click Removal:** Remove all asterisks (*) from:
-  - Character greeting messages
-  - Alternate greetings
-  - Dialogue examples
-- **Smart Character Action Detection:** Intelligently detects and preserves character actions formatted with asterisks
-- **Automatic Saving:** Changes are saved automatically, so back up your character card before use.
-
----
+- **Single-Click Cleanup:** Removes asterisks from greetings, alternate greetings, and dialogue examples
+- **Smart Detection:** Preserves legitimate character actions while removing excessive asterisk formatting
+- **Automatic Saving:** Changes are saved instantly to your character card
 
 ## Usage
 
-1. **Install the Extension:** open SillyTavern -> extensions -> install extension -> https://github.com/DankyDark/asterisks-begone
-2. **Navigate to any Character:** Open any character page.
-3. **Locate the Button:** Find the "Asterisks Begone" button next to the `First Message` label. 
-4. **Click to Clean:** Press the button to instantly remove all unwanted asterisks from the greetings.
+1. **Install:** Open SillyTavern → Extensions → Install extension → `https://github.com/DankyDark/asterisks-begone`
+2. **Find the Button:** Open any character and locate the "Asterisks Begone" button next to "First Message"
+3. **Click to Clean:** Press the button to remove unwanted asterisks
 
-> **Tip:** Enable "Check for character actions" in the extension settings to prevent removal of asterisks when character actions are detected.
-
----
+> **Tip:** Back up your character card before use!
 
 ## Settings
 
-- **Enabled:** Turn the extension on/off
-- **Check for character actions:** When enabled, the extension will detect if text contains character actions wrapped in asterisks (like *Character nods*) mixed with regular text and won't remove any asterisks from that text to preserve the formatting.
-  - Smart detection identifies true character actions vs. excessive formatting
-  - Automatically cleans up greeting texts where all non-dialogue paragraphs are wrapped in asterisks
-  - Recognizes template variables and special tokens to avoid false positives
-  - Analyzes paragraph structure to make informed decisions about what to clean
-
----
+- **Enabled:** Toggles the extension on/off
+- **Check for character actions:** When enabled, preserves legitimate character actions:
+  - Detects mixed formatting (regular text with action descriptions)
+  - Cleans up when most paragraphs are wrapped in asterisks
+  - Disable to remove all asterisks regardless of content
 
 ## Why Remove Asterisks?
 
-*I created this extension to tackle character cards where entire paragraphs were wrapped in asterisks, leaving just the dialogue untouched across all greetings and example dialogues.*
-
-I still enjoy asterisks for emphasizing actions (like *He raised his fist to the heavens*), but when they dominate the text, they lose their impact. **Asterisks Begone** isn't designed for that style of writing, it's for cleaning up the overuse cases.
+> This extension tackles character cards where entire paragraphs are wrapped in asterisks with only dialogue untouched. It's not for removing all character actions, but for cleaning up cases where excessive asterisk usage diminishes their impact.

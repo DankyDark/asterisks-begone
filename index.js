@@ -5,6 +5,7 @@ const extensionName = "asterisks-begone";
 const defaultSettings = {
   enabled: true,
   checkForCharacterActions: true, // When true, will check if text contains character actions before removing asterisks
+  cleanDescription: false, // When true, will also clean the character description field
 };
 
 // Setup variables
@@ -37,6 +38,7 @@ async function addSettings() {
     // Initialize checkboxes
     $("#asterisks-begone-enabled").prop("checked", extension_settings[extensionName].enabled);
     $("#asterisks-begone-check-actions").prop("checked", extension_settings[extensionName].checkForCharacterActions);
+    $("#asterisks-begone-clean-description").prop("checked", extension_settings[extensionName].cleanDescription);
 
     // Add event listeners
     $("#asterisks-begone-enabled").on("change", function () {
@@ -53,6 +55,11 @@ async function addSettings() {
 
     $("#asterisks-begone-check-actions").on("change", function () {
       extension_settings[extensionName].checkForCharacterActions = !!$(this).prop("checked");
+      saveSettingsDebounced();
+    });
+
+    $("#asterisks-begone-clean-description").on("change", function () {
+      extension_settings[extensionName].cleanDescription = !!$(this).prop("checked");
       saveSettingsDebounced();
     });
   } catch (error) {
@@ -170,10 +177,12 @@ async function removeAsterisks() {
     const examplesText = $("#mes_example_textarea").val();
     const firstMessage = $("#firstmessage_textarea").val();
     const alternateGreetings = character?.data?.alternate_greetings || [];
+    const description = character?.data?.description || "";
 
     // First check if there are ANY asterisks to remove at all
     if ((examplesText && examplesText.includes('*')) || 
-        (firstMessage && firstMessage.includes('*'))) {
+        (firstMessage && firstMessage.includes('*')) ||
+        (extension_settings[extensionName].cleanDescription && description && description.includes('*'))) {
       anyAsterisksFound = true;
     } else {
       for (const greeting of alternateGreetings) {
@@ -204,6 +213,13 @@ async function removeAsterisks() {
           !hasCharacterActions(firstMessage)) {
         anySectionShouldBeClean = true;
         // console.log("[Asterisks-Begone] First message should be cleaned");
+      }
+
+      // Check description if enabled and needed
+      if (!anySectionShouldBeClean && extension_settings[extensionName].cleanDescription && 
+          description && description.includes('*') && !hasCharacterActions(description)) {
+        anySectionShouldBeClean = true;
+        // console.log("[Asterisks-Begone] Description should be cleaned");
       }
 
       // Check alternate greetings if needed
@@ -252,6 +268,17 @@ async function removeAsterisks() {
       }
     }
 
+    // Clean description if enabled
+    if (extension_settings[extensionName].cleanDescription && description) {
+      const cleanedDescription = description.replace(/\*/g, "");
+      if (cleanedDescription !== description) {
+        character.data.description = cleanedDescription;
+        $("#description_textarea").val(cleanedDescription);
+        cleanedFields.push("Description");
+        hasChanges = true;
+      }
+    }
+
     // Clean alternate greetings
     let altGreetingsChanged = false;
     const cleanedGreetings = alternateGreetings.map((greeting, index) => {
@@ -282,6 +309,7 @@ async function removeAsterisks() {
         // Trigger changes to save
         $("#mes_example_textarea").trigger("change");
         $("#firstmessage_textarea").trigger("change");
+        $("#description_textarea").trigger("change");
         $("#create_button").trigger("click");
         
         toastr.success("Asterisks, BEGONE!");

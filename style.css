@@ -1,17 +1,17 @@
 #asterisks-begone-button {
-  margin-left: 10px;
-  margin-right: 10px;
+  margin-left: 5px;
+  margin-right: 5px;
   display: inline-block !important;
   background-color: #ac0000;
   color: white;
   font-weight: normal;
-  padding: 4px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
   z-index: 999;
   position: relative;
   border: 1px solid #300000;
   box-shadow: none;
-  font-size: 14px;
+  font-size: 12px;
   text-align: center;
   vertical-align: middle;
 }

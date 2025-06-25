@@ -28,7 +28,10 @@ async function addSettings() {
       `/scripts/extensions/third-party/${extensionName}/index.html`
     );
     if (!response.ok) {
-      console.error(`[${extensionName}] Error loading settings HTML:`, response.statusText);
+      console.error(
+        `[${extensionName}] Error loading settings HTML:`,
+        response.statusText
+      );
       return;
     }
 
@@ -36,9 +39,18 @@ async function addSettings() {
     $("#extensions_settings").append(html);
 
     // Initialize checkboxes
-    $("#asterisks-begone-enabled").prop("checked", extension_settings[extensionName].enabled);
-    $("#asterisks-begone-check-actions").prop("checked", extension_settings[extensionName].checkForCharacterActions);
-    $("#asterisks-begone-clean-description").prop("checked", extension_settings[extensionName].cleanDescription);
+    $("#asterisks-begone-enabled").prop(
+      "checked",
+      extension_settings[extensionName].enabled
+    );
+    $("#asterisks-begone-check-actions").prop(
+      "checked",
+      extension_settings[extensionName].checkForCharacterActions
+    );
+    $("#asterisks-begone-clean-description").prop(
+      "checked",
+      extension_settings[extensionName].cleanDescription
+    );
 
     // Add event listeners
     $("#asterisks-begone-enabled").on("change", function () {
@@ -54,12 +66,14 @@ async function addSettings() {
     });
 
     $("#asterisks-begone-check-actions").on("change", function () {
-      extension_settings[extensionName].checkForCharacterActions = !!$(this).prop("checked");
+      extension_settings[extensionName].checkForCharacterActions =
+        !!$(this).prop("checked");
       saveSettingsDebounced();
     });
 
     $("#asterisks-begone-clean-description").on("change", function () {
-      extension_settings[extensionName].cleanDescription = !!$(this).prop("checked");
+      extension_settings[extensionName].cleanDescription =
+        !!$(this).prop("checked");
       saveSettingsDebounced();
     });
   } catch (error) {
@@ -77,15 +91,22 @@ function checkAndAddButton() {
       isAddingButton = true;
       $(".asterisks-begone-button").remove();
 
-      if (!extension_settings[extensionName].enabled || $(".asterisks-begone-button").length > 0) {
-        buttonAdded = extension_settings[extensionName].enabled && $(".asterisks-begone-button").length > 0;
+      if (
+        !extension_settings[extensionName].enabled ||
+        $(".asterisks-begone-button").length > 0
+      ) {
+        buttonAdded =
+          extension_settings[extensionName].enabled &&
+          $(".asterisks-begone-button").length > 0;
         isAddingButton = false;
         return;
       }
 
-      const firstMessageLabel = $('div:contains("First message")').filter(function() {
-        return $(this).text().trim() === "First message";
-      });
+      const firstMessageLabel = $('div:contains("First message")').filter(
+        function () {
+          return $(this).text().trim() === "First message";
+        }
+      );
 
       if (firstMessageLabel.length) {
         const button = $("<input>", {
@@ -110,45 +131,53 @@ function checkAndAddButton() {
 
 // Detect if text has legitimate character actions vs formatting asterisks
 function hasCharacterActions(text) {
-  if (!text?.trim().includes('*')) return false;
+  if (!text?.trim().includes("*")) return false;
 
   const segments = text.match(/\*([^*]+)\*/g) || [];
   if (!segments.length) return false;
 
-  let actionScore = 0, formattingScore = 0;
+  let actionScore = 0,
+    formattingScore = 0;
 
   // Check wrapping patterns
-  const wrappedRatio = segments.join('').length / text.length;
+  const wrappedRatio = segments.join("").length / text.length;
   if (wrappedRatio > 0.7) formattingScore += 3;
 
   // Check paragraph consistency
-  const lines = text.split('\n').filter(l => l.trim());
-  const wrappedLines = lines.filter(l => l.trim().match(/^\*.*\*$/));
-  if (lines.length > 3 && wrappedLines.length / lines.length > 0.8) formattingScore += 3;
+  const lines = text.split("\n").filter((l) => l.trim());
+  const wrappedLines = lines.filter((l) => l.trim().match(/^\*.*\*$/));
+  if (lines.length > 3 && wrappedLines.length / lines.length > 0.8)
+    formattingScore += 3;
 
   // Action keywords (condensed list)
-  const actionWords = /\b(walks?|runs?|sits?|stands?|moves?|grabs?|takes?|holds?|smiles?|frowns?|nods?|looks?|laughs?|cries?|whispers?|shouts?)\b/i;
-  const emotionWords = /\b(nervously|quickly|slowly|gently|hesitantly|confidently)\b/i;
+  const actionWords =
+    /\b(walks?|runs?|sits?|stands?|moves?|grabs?|takes?|holds?|smiles?|frowns?|nods?|looks?|laughs?|cries?|whispers?|shouts?|jumps?|climbs?|pushes?|pulls?|throws?|catches?|hugs?|kisses?|waves?|points?|shrugs?|stretches?|yawns?|sighs?|gasps?|screams?|mutters?|mumbles?|growls?|grunts?)\b/i;
+  const emotionWords =
+    /\b(nervously|quickly|slowly|gently|hesitantly|confidently|angrily|happily|sadly|excitedly|fearfully|calmly|playfully|seriously|carefully|awkwardly|gracefully|forcefully|weakly|strongly|suddenly|gradually|intensely|casually)\b/i;
 
   for (const segment of segments) {
-    const content = segment.replace(/\*/g, '').toLowerCase();
-    const words = content.split(' ');
+    const content = segment.replace(/\*/g, "").toLowerCase();
+    const words = content.split(" ");
 
     // Score action indicators
     if (actionWords.test(content)) actionScore += 2;
     if (emotionWords.test(content)) actionScore += 1;
-    if (/\b(i|you|he|she|they)\b/.test(content) && words.length <= 8) actionScore += 1;
+    if (/\b(i|you|he|she|they)\b/.test(content) && words.length <= 8)
+      actionScore += 1;
 
     // Score formatting indicators
     if (content.length > 50 && !actionWords.test(content)) formattingScore += 1;
-    if (/^[A-Z\s]+$/.test(content) || content.includes('!!!') || words.length === 1) formattingScore += 1;
+    if (
+      /^[A-Z\s]+$/.test(content) ||
+      content.includes("!!!") ||
+      words.length === 1
+    )
+      formattingScore += 1;
     if (content.length > 100) formattingScore += 1;
   }
 
   return actionScore > formattingScore + 2;
 }
-
-
 
 // Helper functions for field processing
 function getCharacterFields(character) {
@@ -156,31 +185,40 @@ function getCharacterFields(character) {
     examplesText: $("#mes_example_textarea").val() || "",
     firstMessage: $("#firstmessage_textarea").val() || "",
     alternateGreetings: character?.data?.alternate_greetings || [],
-    description: character?.data?.description || ""
+    description: character?.data?.description || "",
   };
 }
 
 function hasAnyAsterisks(fields) {
-  const { examplesText, firstMessage, alternateGreetings, description } = fields;
-  return examplesText.includes('*') ||
-         firstMessage.includes('*') ||
-         (extension_settings[extensionName].cleanDescription && description.includes('*')) ||
-         alternateGreetings.some(g => g?.includes('*'));
+  const { examplesText, firstMessage, alternateGreetings, description } =
+    fields;
+  return (
+    examplesText.includes("*") ||
+    firstMessage.includes("*") ||
+    (extension_settings[extensionName].cleanDescription &&
+      description.includes("*")) ||
+    alternateGreetings.some((g) => g?.includes("*"))
+  );
 }
 
 function shouldCleanAnyField(fields) {
   if (!extension_settings[extensionName].checkForCharacterActions) return true;
 
-  const { examplesText, firstMessage, alternateGreetings, description } = fields;
+  const { examplesText, firstMessage, alternateGreetings, description } =
+    fields;
 
-  return (examplesText.includes('*') && !hasCharacterActions(examplesText)) ||
-         (firstMessage.includes('*') && !hasCharacterActions(firstMessage)) ||
-         (extension_settings[extensionName].cleanDescription && description.includes('*') && !hasCharacterActions(description)) ||
-         alternateGreetings.some(g => g?.includes('*') && !hasCharacterActions(g));
+  return (
+    (examplesText.includes("*") && !hasCharacterActions(examplesText)) ||
+    (firstMessage.includes("*") && !hasCharacterActions(firstMessage)) ||
+    (extension_settings[extensionName].cleanDescription &&
+      description.includes("*") &&
+      !hasCharacterActions(description)) ||
+    alternateGreetings.some((g) => g?.includes("*") && !hasCharacterActions(g))
+  );
 }
 
 function cleanField(selector, value, fieldName, cleanedFields) {
-  if (!value?.includes('*')) return false;
+  if (!value?.includes("*")) return false;
 
   const cleaned = value.replace(/\*/g, "");
   if (cleaned !== value) {
@@ -206,38 +244,64 @@ async function removeAsterisks() {
     }
 
     if (!shouldCleanAnyField(fields)) {
-      return toastr.warning("Character actions detected. To delete asterisks, disable setting.");
+      return toastr.warning(
+        "Character actions detected. To delete asterisks, disable setting."
+      );
     }
 
     const cleanedFields = [];
     let hasChanges = false;
 
     // Clean all fields
-    hasChanges |= cleanField("#mes_example_textarea", fields.examplesText, "Example messages", cleanedFields);
-    hasChanges |= cleanField("#firstmessage_textarea", fields.firstMessage, "First message", cleanedFields);
+    hasChanges |= cleanField(
+      "#mes_example_textarea",
+      fields.examplesText,
+      "Example messages",
+      cleanedFields
+    );
+    hasChanges |= cleanField(
+      "#firstmessage_textarea",
+      fields.firstMessage,
+      "First message",
+      cleanedFields
+    );
 
     if (extension_settings[extensionName].cleanDescription) {
-      hasChanges |= cleanField("#description_textarea", fields.description, "Description", cleanedFields);
-      if (fields.description.includes('*')) {
+      hasChanges |= cleanField(
+        "#description_textarea",
+        fields.description,
+        "Description",
+        cleanedFields
+      );
+      if (fields.description.includes("*")) {
         character.data.description = fields.description.replace(/\*/g, "");
       }
     }
 
     // Clean alternate greetings
     const cleanedGreetings = fields.alternateGreetings.map((greeting, i) => {
-      if (!greeting?.includes('*')) return greeting;
+      if (!greeting?.includes("*")) return greeting;
       cleanedFields.push(`Alternate greeting ${i + 1}`);
       hasChanges = true;
       return greeting.replace(/\*/g, "");
     });
 
-    if (hasChanges && cleanedGreetings.some((g, i) => g !== fields.alternateGreetings[i])) {
+    if (
+      hasChanges &&
+      cleanedGreetings.some((g, i) => g !== fields.alternateGreetings[i])
+    ) {
       character.data.alternate_greetings = cleanedGreetings;
-      $("#alternate_greetings_template").val(JSON.stringify(cleanedGreetings, null, 2));
+      $("#alternate_greetings_template").val(
+        JSON.stringify(cleanedGreetings, null, 2)
+      );
     }
 
     if (hasChanges) {
-      ["#mes_example_textarea", "#firstmessage_textarea", "#description_textarea"].forEach(sel => $(sel).trigger("change"));
+      [
+        "#mes_example_textarea",
+        "#firstmessage_textarea",
+        "#description_textarea",
+      ].forEach((sel) => $(sel).trigger("change"));
       $("#create_button").trigger("click");
       toastr.success("Asterisks, BEGONE!");
     } else {
@@ -252,10 +316,12 @@ async function removeAsterisks() {
 $(document).ready(function () {
   addSettings();
 
-  $(document).on("click", ".character_select, #rm_button_selected_ch",
-    () => setTimeout(checkAndAddButton, 300));
+  $(document).on("click", ".character_select, #rm_button_selected_ch", () =>
+    setTimeout(checkAndAddButton, 300)
+  );
 
-  $(document).on("click", ".advanced_button, .toggle_advanced",
-    () => setTimeout(checkAndAddButton, 300));
+  $(document).on("click", ".advanced_button, .toggle_advanced", () =>
+    setTimeout(checkAndAddButton, 300)
+  );
   setTimeout(checkAndAddButton, 1000);
 });

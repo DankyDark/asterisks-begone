@@ -25,6 +25,7 @@ Welcome to **Asterisks Begone**, an extension for [SillyTavern](https://github.c
   - Detects mixed formatting (regular text with action descriptions)
   - Cleans up when most paragraphs are wrapped in asterisks
   - Disable to remove all asterisks regardless of content
+- **Clean description field:** Cleans unwanted asterisks from the description field of the character card as well
 
 ## Why Remove Asterisks?
 

@@ -4,14 +4,9 @@ import { saveSettingsDebounced } from "../../../../script.js";
 const extensionName = "asterisks-begone";
 const defaultSettings = {
   enabled: true,
-  checkForCharacterActions: true, // When true, will check if text contains character actions before removing asterisks
-  cleanDescription: false, // When true, will also clean the character description field
+  checkForCharacterActions: true,
+  cleanDescription: false,
 };
-
-// Setup variables
-let buttonAdded = false;
-let isAddingButton = false;
-let buttonAddTimeout = null;
 
 // Initialize settings
 extension_settings[extensionName] = extension_settings[extensionName] || {};
@@ -61,7 +56,6 @@ async function addSettings() {
         checkAndAddButton();
       } else {
         $(".asterisks-begone-button").remove();
-        buttonAdded = false;
       }
     });
 
@@ -82,22 +76,12 @@ async function addSettings() {
 }
 
 function checkAndAddButton() {
-  if (buttonAddTimeout) clearTimeout(buttonAddTimeout);
-
-  buttonAddTimeout = setTimeout(() => {
-    if (isAddingButton) return;
-
-    try {
-      isAddingButton = true;
       $(".asterisks-begone-button").remove();
 
       if (
         !extension_settings[extensionName].enabled ||
         $(".asterisks-begone-button").length > 0
       ) {
-        buttonAdded =
-          extension_settings[extensionName].enabled &&
-          $(".asterisks-begone-button").length > 0;
         isAddingButton = false;
         return;
       }
@@ -118,15 +102,10 @@ function checkAndAddButton() {
         });
 
         button.insertAfter(firstMessageLabel);
-        buttonAdded = true;
         console.log("[Asterisks-Begone] Loaded.");
       } else {
-        console.log("[Asterisks-Begone] Could not load.");
-      }
-    } finally {
-      isAddingButton = false;
+      console.log("[Asterisks-Begone] Could not load.");
     }
-  }, 100);
 }
 
 // Detect if text has legitimate character actions vs formatting asterisks
@@ -315,13 +294,5 @@ async function removeAsterisks() {
 
 $(document).ready(function () {
   addSettings();
-
-  $(document).on("click", ".character_select, #rm_button_selected_ch", () =>
-    setTimeout(checkAndAddButton, 300)
-  );
-
-  $(document).on("click", ".advanced_button, .toggle_advanced", () =>
-    setTimeout(checkAndAddButton, 300)
-  );
   setTimeout(checkAndAddButton, 1000);
 });

@@ -1,0 +1,22 @@
+#asterisks-begone-button {
+  margin-left: 10px;
+  margin-right: 10px;
+  display: inline-block !important;
+  background-color: #ac0000;
+  color: white;
+  font-weight: normal;
+  padding: 4px 8px;
+  border-radius: 4px;
+  z-index: 999;
+  position: relative;
+  border: 1px solid #300000;
+  box-shadow: none;
+  font-size: 14px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+#asterisks-begone-button:hover {
+  background-color: #bb2f2f;
+  cursor: pointer;
+}
